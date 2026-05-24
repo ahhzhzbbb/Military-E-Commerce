@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:military_e_commerce/core/api/api_client.dart';
+import 'package:military_e_commerce/core/api/api_data.dart';
 import 'package:military_e_commerce/core/constants/api_constants.dart';
 import 'package:military_e_commerce/models/models.dart';
-import 'package:military_e_commerce/core/utils/mock_data.dart';
 
 enum AuthStatus { initial, loading, authenticated, unauthenticated, error }
 
@@ -18,11 +18,53 @@ class AuthProvider extends ChangeNotifier {
   String? get errorMessage => _errorMessage;
   bool get isAuthenticated => _status == AuthStatus.authenticated;
 
+  String? _stringValue(dynamic value) {
+    if (value == null) return null;
+    final text = value.toString();
+    return text.isEmpty ? null : text;
+  }
+
+  String? _extractToken(Map<String, dynamic> data) {
+    return _stringValue(data['token']) ??
+        _stringValue(data['access_token']) ??
+        _stringValue(data['accessToken']);
+  }
+
+  String _extractRefreshToken(Map<String, dynamic> data) {
+    return _stringValue(data['refresh_token']) ??
+        _stringValue(data['refreshToken']) ??
+        '';
+  }
+
+  User? _userFromData(dynamic data) {
+    final userMap = ApiData.mapFrom(data, ['user', 'profile']);
+    if (userMap == null || userMap.isEmpty) return null;
+    if (userMap.length == 1 && userMap.containsKey('token')) return null;
+    return User.fromJson(userMap);
+  }
+
+  Future<User?> _fetchCurrentUser() async {
+    final response = await _apiClient.post(
+      ApiConstants.getUserInfo,
+      body: <String, dynamic>{},
+      requiresAuth: true,
+    );
+
+    if (response.isTokenExpired) {
+      await _apiClient.clearTokens();
+      _status = AuthStatus.unauthenticated;
+      return null;
+    }
+
+    if (!response.isSuccess) return null;
+    return _userFromData(response.data);
+  }
+
   Future<void> checkAuthStatus() async {
     await _apiClient.loadTokens();
     if (_apiClient.isLoggedIn) {
+      _user = await _fetchCurrentUser();
       _status = AuthStatus.authenticated;
-      _user = MockData.getMockUser();
     } else {
       _status = AuthStatus.unauthenticated;
     }
@@ -40,24 +82,20 @@ class AuthProvider extends ChangeNotifier {
     try {
       final response = await _apiClient.post(
         ApiConstants.login,
-        body: {
-          'phone_number': phoneNumber,
-          'password': password,
-        },
+        body: {'phone_number': phoneNumber, 'password': password},
         requiresAuth: false,
       );
 
       if (response.isSuccess) {
         final data = response.getDataAsMap();
-        print('[Login] Success - Response data: $data');
-        
+
         if (data != null) {
-          // API returns 'token', not 'access_token'
-          final token = data['token'] as String?;
-          
+          final token = _extractToken(data);
+
           if (token != null && token.isNotEmpty) {
-            await _apiClient.setTokens(token, '');
-            _user = MockData.getMockUser();
+            await _apiClient.setTokens(token, _extractRefreshToken(data));
+            final fetchedUser = await _fetchCurrentUser();
+            _user = fetchedUser ?? _userFromData(data);
             _status = AuthStatus.authenticated;
             notifyListeners();
             return true;
@@ -75,14 +113,12 @@ class AuthProvider extends ChangeNotifier {
         }
       } else {
         _errorMessage = '${response.message} (Code: ${response.code})';
-        print('[Login] Error - ${response.message}');
         _status = AuthStatus.error;
         notifyListeners();
         return false;
       }
     } catch (e) {
       _errorMessage = 'Lỗi kết nối: ${e.toString()}';
-      print('[Login] Exception: $e');
       _status = AuthStatus.error;
       notifyListeners();
       return false;
@@ -106,16 +142,25 @@ class AuthProvider extends ChangeNotifier {
           'phone_number': phoneNumber,
           'password': password,
           'username': username,
-          if (phone != null) 'phone': phone,
+          'phone': ?phone,
         },
         requiresAuth: false,
       );
 
       if (response.isSuccess) {
-        _status = AuthStatus.authenticated;
-        _user = MockData.getMockUser();
-        notifyListeners();
-        return true;
+        final data = response.getDataAsMap();
+        final token = data != null ? _extractToken(data) : null;
+
+        if (token != null && token.isNotEmpty) {
+          await _apiClient.setTokens(token, _extractRefreshToken(data!));
+          final fetchedUser = await _fetchCurrentUser();
+          _user = fetchedUser ?? _userFromData(data);
+          _status = AuthStatus.authenticated;
+          notifyListeners();
+          return true;
+        }
+
+        return login(phoneNumber: phoneNumber, password: password);
       } else {
         _errorMessage = response.message;
         _status = AuthStatus.error;
@@ -123,11 +168,10 @@ class AuthProvider extends ChangeNotifier {
         return false;
       }
     } catch (e) {
-      _user = MockData.getMockUser();
-      await _apiClient.setTokens('mock_token', 'mock_refresh');
-      _status = AuthStatus.authenticated;
+      _errorMessage = 'Lỗi kết nối: ${e.toString()}';
+      _status = AuthStatus.error;
       notifyListeners();
-      return true;
+      return false;
     }
   }
 
@@ -135,6 +179,7 @@ class AuthProvider extends ChangeNotifier {
     _status = AuthStatus.loading;
     notifyListeners();
 
+    await _apiClient.post(ApiConstants.logout, requiresAuth: true);
     await _apiClient.clearTokens();
     _user = null;
     _status = AuthStatus.unauthenticated;
@@ -152,20 +197,65 @@ class AuthProvider extends ChangeNotifier {
     if (_user == null) return false;
 
     try {
-      await Future.delayed(const Duration(milliseconds: 500));
-      _user = _user!.copyWith(
-        username: username ?? _user!.username,
-        email: email ?? _user!.email,
-        phone: phone ?? _user!.phone,
-        avatar: avatar ?? _user!.avatar,
-        coverImage: coverImage ?? _user!.coverImage,
-        address: address ?? _user!.address,
+      final body = <String, dynamic>{
+        'username': ?username,
+        'email': ?email,
+        'phone': ?phone,
+        'avatar': ?avatar,
+        'cover_image': ?coverImage,
+        'address': ?address,
+      };
+      final response = await _apiClient.post(
+        ApiConstants.setUserInfo,
+        body: body,
+        requiresAuth: true,
       );
+
+      if (!response.isSuccess) {
+        _errorMessage = response.message;
+        notifyListeners();
+        return false;
+      }
+
+      var updatedUser = _userFromData(response.data);
+      updatedUser ??= await _fetchCurrentUser();
+      _user =
+          updatedUser ??
+          _user!.copyWith(
+            username: username ?? _user!.username,
+            email: email ?? _user!.email,
+            phone: phone ?? _user!.phone,
+            avatar: avatar ?? _user!.avatar,
+            coverImage: coverImage ?? _user!.coverImage,
+            address: address ?? _user!.address,
+          );
       notifyListeners();
       return true;
     } catch (e) {
+      _errorMessage = 'Lỗi kết nối: ${e.toString()}';
+      notifyListeners();
       return false;
     }
+  }
+
+  Future<bool> changePassword({
+    required String oldPassword,
+    required String newPassword,
+  }) async {
+    _errorMessage = null;
+    notifyListeners();
+
+    final response = await _apiClient.post(
+      ApiConstants.changePassword,
+      body: {'old_password': oldPassword, 'new_password': newPassword},
+      requiresAuth: true,
+    );
+
+    if (response.isSuccess) return true;
+
+    _errorMessage = '${response.message} (Code: ${response.code})';
+    notifyListeners();
+    return false;
   }
 
   void clearError() {

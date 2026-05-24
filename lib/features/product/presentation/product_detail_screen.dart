@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import '../../../core/api/api_client.dart';
+import '../../../core/api/api_data.dart';
+import '../../../core/constants/api_constants.dart';
 import '../../../core/constants/app_theme.dart';
 import '../../../core/widgets/common_widgets.dart';
-import '../../../core/utils/mock_data.dart';
 import '../../../models/models.dart';
 import '../../cart/data/cart_provider.dart';
 import 'package:provider/provider.dart';
@@ -16,9 +18,12 @@ class ProductDetailScreen extends StatefulWidget {
 }
 
 class _ProductDetailScreenState extends State<ProductDetailScreen> {
+  final ApiClient _apiClient = ApiClient();
+
   Product? _product;
   List<Comment> _comments = [];
   bool _isLoading = true;
+  String? _error;
   int _selectedImageIndex = 0;
   int _quantity = 1;
   bool _isLiked = false;
@@ -30,23 +35,96 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     _loadProduct();
   }
 
+  dynamic _productIdParam() {
+    return int.tryParse(widget.productId) ?? widget.productId;
+  }
+
+  Product? _parseProduct(dynamic data) {
+    final map = ApiData.mapFrom(data, ['product']);
+    if (map != null) return Product.fromJson(map);
+
+    final list = ApiData.asList(data, ['products', 'items', 'list']);
+    if (list.isEmpty || list.first is! Map) return null;
+    return Product.fromJson(Map<String, dynamic>.from(list.first as Map));
+  }
+
+  List<Comment> _parseComments(dynamic data) {
+    return ApiData.asList(data, ['comments', 'items', 'list'])
+        .whereType<Map>()
+        .map((item) => Comment.fromJson(Map<String, dynamic>.from(item)))
+        .toList();
+  }
+
   Future<void> _loadProduct() async {
-    setState(() => _isLoading = true);
-    await Future.delayed(const Duration(milliseconds: 300));
-    _product = MockData.getProduct(widget.productId);
-    _comments = MockData.getMockComments(widget.productId);
-    _isLiked = _product?.likeCount != null && _product!.likeCount! > 0;
-    setState(() => _isLoading = false);
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
+    try {
+      final productResponse = await _apiClient.post(
+        ApiConstants.getProduct,
+        body: {'product_id': _productIdParam()},
+        requiresAuth: true,
+      );
+
+      if (!productResponse.isSuccess) {
+        throw Exception(
+          '${productResponse.message} (Code: ${productResponse.code})',
+        );
+      }
+
+      final commentsResponse = await _apiClient.post(
+        ApiConstants.getCommentsProduct,
+        body: {'product_id': _productIdParam(), 'index': 0, 'count': 20},
+        requiresAuth: true,
+      );
+
+      _product = _parseProduct(productResponse.data);
+      _comments = commentsResponse.isSuccess
+          ? _parseComments(commentsResponse.data)
+          : [];
+      _isLiked = _product?.likeCount != null && _product!.likeCount! > 0;
+    } catch (e) {
+      _product = null;
+      _comments = [];
+      _error = e.toString();
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  Future<void> _toggleLike() async {
+    final product = _product;
+    if (product == null) return;
+
+    final response = await _apiClient.post(
+      ApiConstants.likeProduct,
+      body: {'product_id': _productIdParam()},
+      requiresAuth: true,
+    );
+
+    if (!mounted) return;
+
+    if (response.isSuccess) {
+      setState(() => _isLiked = !_isLiked);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(response.message),
+          backgroundColor: AppColors.error,
+        ),
+      );
+    }
   }
 
   void _addToCart() {
     if (_product == null) return;
 
     final cartProvider = context.read<CartProvider>();
-    cartProvider.addToCart(
-      product: _product!,
-      quantity: _quantity,
-    );
+    cartProvider.addToCart(product: _product!, quantity: _quantity);
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -74,10 +152,11 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     if (_product == null) {
       return Scaffold(
         appBar: AppBar(title: const Text('Chi tiết sản phẩm')),
-        body: const EmptyState(
+        body: EmptyState(
           icon: Icons.error_outline,
           title: 'Không tìm thấy sản phẩm',
-          message: 'Sản phẩm này có thể đã bị xóa hoặc không tồn tại.',
+          message:
+              _error ?? 'Sản phẩm này có thể đã bị xóa hoặc không tồn tại.',
         ),
       );
     }
@@ -136,14 +215,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                   _isLiked ? Icons.favorite : Icons.favorite_border,
                   color: _isLiked ? Colors.red : Colors.white,
                 ),
-                onPressed: () {
-                  setState(() => _isLiked = !_isLiked);
-                },
+                onPressed: _toggleLike,
               ),
-              IconButton(
-                icon: const Icon(Icons.share),
-                onPressed: () {},
-              ),
+              IconButton(icon: const Icon(Icons.share), onPressed: () {}),
             ],
           ),
           SliverToBoxAdapter(
@@ -191,13 +265,17 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                             const SizedBox(width: 8),
                             Text(
                               '${_product!.ratingAverage!.toStringAsFixed(1)} (${_product!.ratingCount} đánh giá)',
-                              style: const TextStyle(color: AppColors.textSecondary),
+                              style: const TextStyle(
+                                color: AppColors.textSecondary,
+                              ),
                             ),
                             const SizedBox(width: 16),
                           ],
                           Text(
                             'Đã bán ${_product!.soldCount ?? 0}',
-                            style: const TextStyle(color: AppColors.textSecondary),
+                            style: const TextStyle(
+                              color: AppColors.textSecondary,
+                            ),
                           ),
                         ],
                       ),
@@ -226,10 +304,22 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                         ],
                       ),
                       const SizedBox(height: 16),
-                      _buildInfoRow('Danh mục', _product!.categoryName ?? 'N/A'),
-                      _buildInfoRow('Thương hiệu', _product!.brandName ?? 'N/A'),
-                      _buildInfoRow('Tình trạng', _product!.condition == 'new' ? 'Mới' : 'Đã sử dụng'),
-                      _buildInfoRow('Kho hàng', '${_product!.stock ?? 0} sản phẩm'),
+                      _buildInfoRow(
+                        'Danh mục',
+                        _product!.categoryName ?? 'N/A',
+                      ),
+                      _buildInfoRow(
+                        'Thương hiệu',
+                        _product!.brandName ?? 'N/A',
+                      ),
+                      _buildInfoRow(
+                        'Tình trạng',
+                        _product!.condition == 'new' ? 'Mới' : 'Đã sử dụng',
+                      ),
+                      _buildInfoRow(
+                        'Kho hàng',
+                        '${_product!.stock ?? 0} sản phẩm',
+                      ),
                       _buildInfoRow('Gửi từ', _product!.shipFromName ?? 'N/A'),
                     ],
                   ),
@@ -315,10 +405,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
               ],
             ),
           ),
-          OutlinedButton(
-            onPressed: () {},
-            child: const Text('Theo dõi'),
-          ),
+          OutlinedButton(onPressed: () {}, child: const Text('Theo dõi')),
         ],
       ),
     );
@@ -412,10 +499,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           const SizedBox(height: 8),
           Text(
             _product!.description ?? 'Không có mô tả cho sản phẩm này.',
-            style: const TextStyle(
-              color: AppColors.textSecondary,
-              height: 1.5,
-            ),
+            style: const TextStyle(color: AppColors.textSecondary, height: 1.5),
           ),
         ],
       ),
@@ -426,9 +510,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     if (_comments.isEmpty) {
       return const Padding(
         padding: EdgeInsets.all(32),
-        child: Center(
-          child: Text('Chưa có đánh giá nào'),
-        ),
+        child: Center(child: Text('Chưa có đánh giá nào')),
       );
     }
 

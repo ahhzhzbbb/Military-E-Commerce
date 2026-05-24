@@ -186,15 +186,32 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
     super.dispose();
   }
 
-  void _handleChangePassword() {
+  Future<void> _handleChangePassword() async {
     if (_formKey.currentState?.validate() ?? false) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Đổi mật khẩu thành công'),
-          backgroundColor: AppColors.success,
-        ),
+      final authProvider = context.read<AuthProvider>();
+      final success = await authProvider.changePassword(
+        oldPassword: _currentPasswordController.text,
+        newPassword: _newPasswordController.text,
       );
-      Navigator.of(context).pop();
+
+      if (!mounted) return;
+
+      if (success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Đổi mật khẩu thành công'),
+            backgroundColor: AppColors.success,
+          ),
+        );
+        Navigator.of(context).pop();
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(authProvider.errorMessage ?? 'Đổi mật khẩu thất bại'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
     }
   }
 
@@ -219,7 +236,9 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                   labelText: 'Mật khẩu hiện tại',
                   prefixIcon: const Icon(Icons.lock_outline),
                   suffixIcon: IconButton(
-                    icon: Icon(_obscureCurrent ? Icons.visibility_off : Icons.visibility),
+                    icon: Icon(
+                      _obscureCurrent ? Icons.visibility_off : Icons.visibility,
+                    ),
                     onPressed: () {
                       setState(() => _obscureCurrent = !_obscureCurrent);
                     },
@@ -240,7 +259,9 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                   labelText: 'Mật khẩu mới',
                   prefixIcon: const Icon(Icons.lock_outline),
                   suffixIcon: IconButton(
-                    icon: Icon(_obscureNew ? Icons.visibility_off : Icons.visibility),
+                    icon: Icon(
+                      _obscureNew ? Icons.visibility_off : Icons.visibility,
+                    ),
                     onPressed: () {
                       setState(() => _obscureNew = !_obscureNew);
                     },
@@ -264,7 +285,9 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                   labelText: 'Xác nhận mật khẩu mới',
                   prefixIcon: const Icon(Icons.lock_outline),
                   suffixIcon: IconButton(
-                    icon: Icon(_obscureConfirm ? Icons.visibility_off : Icons.visibility),
+                    icon: Icon(
+                      _obscureConfirm ? Icons.visibility_off : Icons.visibility,
+                    ),
                     onPressed: () {
                       setState(() => _obscureConfirm = !_obscureConfirm);
                     },

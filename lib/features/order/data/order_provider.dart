@@ -1,26 +1,96 @@
 import 'package:flutter/material.dart';
+import '../../../core/api/api_client.dart';
+import '../../../core/api/api_data.dart';
+import '../../../core/constants/api_constants.dart';
 import '../../../models/models.dart';
-import '../../../core/utils/mock_data.dart';
 
 class OrderProvider extends ChangeNotifier {
+  final ApiClient _apiClient = ApiClient();
+
   List<Order> _orders = [];
+  List<OrderAddress> _addresses = [];
   Order? _currentOrder;
   bool _isLoading = false;
+  String? _error;
 
   List<Order> get orders => _orders;
+  List<OrderAddress> get addresses => _addresses;
   Order? get currentOrder => _currentOrder;
   bool get isLoading => _isLoading;
+  String? get error => _error;
 
   int get pendingCount => _orders.where((o) => o.status == 'pending').length;
   int get shippingCount => _orders.where((o) => o.status == 'shipping').length;
-  int get deliveredCount => _orders.where((o) => o.status == 'delivered').length;
+  int get deliveredCount =>
+      _orders.where((o) => o.status == 'delivered').length;
+
+  List<Order> _parseOrders(dynamic data) {
+    return ApiData.asList(data, ['purchases', 'orders', 'items', 'list'])
+        .whereType<Map>()
+        .map((item) => Order.fromJson(Map<String, dynamic>.from(item)))
+        .toList();
+  }
+
+  List<OrderAddress> _parseAddresses(dynamic data) {
+    return ApiData.asList(data, ['addresses', 'items', 'list'])
+        .whereType<Map>()
+        .map((item) => OrderAddress.fromJson(Map<String, dynamic>.from(item)))
+        .toList();
+  }
+
+  Order? _parseOrder(dynamic data) {
+    final map = ApiData.mapFrom(data, ['order', 'purchase']);
+    if (map != null) return Order.fromJson(map);
+
+    final list = ApiData.asList(data, ['orders', 'purchases', 'items', 'list']);
+    if (list.isEmpty || list.first is! Map) return null;
+    return Order.fromJson(Map<String, dynamic>.from(list.first as Map));
+  }
+
+  dynamic _productIdParam(String productId) {
+    return int.tryParse(productId) ?? productId;
+  }
 
   Future<void> loadOrders() async {
     _isLoading = true;
+    _error = null;
     notifyListeners();
 
-    await Future.delayed(const Duration(milliseconds: 500));
-    _orders = MockData.getMockOrders();
+    final response = await _apiClient.post(
+      ApiConstants.getListPurchases,
+      body: const {'index': 0, 'count': 50},
+      requiresAuth: true,
+    );
+
+    if (response.isSuccess) {
+      _orders = _parseOrders(response.data);
+    } else {
+      _orders = [];
+      _error = '${response.message} (Code: ${response.code})';
+    }
+
+    _isLoading = false;
+    notifyListeners();
+  }
+
+  Future<void> loadAddresses() async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    final response = await _apiClient.post(
+      ApiConstants.getListOrderAddress,
+      body: <String, dynamic>{},
+      requiresAuth: true,
+    );
+
+    if (response.isSuccess) {
+      _addresses = _parseAddresses(response.data);
+    } else {
+      _addresses = [];
+      _error = '${response.message} (Code: ${response.code})';
+    }
+
     _isLoading = false;
     notifyListeners();
   }
@@ -30,44 +100,53 @@ class OrderProvider extends ChangeNotifier {
     required OrderAddress shippingAddress,
     String? notes,
   }) async {
+    if (items.isEmpty) {
+      _error = 'Giỏ hàng trống';
+      notifyListeners();
+      return null;
+    }
+
     _isLoading = true;
+    _error = null;
     notifyListeners();
 
-    await Future.delayed(const Duration(milliseconds: 800));
+    Order? createdOrder;
 
-    final subtotal = items.fold<double>(0, (sum, item) => sum + item.totalPrice);
-    final shippingFee = subtotal > 0 ? 5000.0 : 0.0;
+    for (final item in items) {
+      final response = await _apiClient.post(
+        ApiConstants.createOrder,
+        body: {
+          'product_id': _productIdParam(item.product.id),
+          'quantity': item.quantity,
+          'address_id': shippingAddress.id,
+          'note': ?notes,
+        },
+        requiresAuth: true,
+      );
 
-    final order = Order(
-      id: 'order_${DateTime.now().millisecondsSinceEpoch}',
-      buyerId: 'user_001',
-      sellerId: items.first.product.sellerId,
-      sellerName: items.first.product.sellerName,
-      items: items.map((item) => OrderItem(
-        id: 'item_${DateTime.now().millisecondsSinceEpoch}',
-        productId: item.product.id,
-        productTitle: item.product.title,
-        productImage: item.product.images.isNotEmpty ? item.product.images.first : null,
-        price: item.product.price,
-        quantity: item.quantity,
-        selectedSize: item.selectedSize,
-      )).toList(),
-      shippingAddress: shippingAddress,
-      subtotal: subtotal,
-      shippingFee: shippingFee,
-      total: subtotal + shippingFee,
-      status: 'pending',
-      statusName: 'Chờ xác nhận',
-      notes: notes,
-      createdAt: DateTime.now(),
-    );
+      if (!response.isSuccess) {
+        _error = '${response.message} (Code: ${response.code})';
+        _isLoading = false;
+        notifyListeners();
+        return null;
+      }
 
-    _orders.insert(0, order);
-    _currentOrder = order;
+      createdOrder ??= _parseOrder(response.data);
+    }
+
     _isLoading = false;
-    notifyListeners();
 
-    return order;
+    if (createdOrder != null) {
+      _currentOrder = createdOrder;
+      _orders.insert(0, createdOrder);
+      notifyListeners();
+      return createdOrder;
+    }
+
+    notifyListeners();
+    await loadOrders();
+    _currentOrder = _orders.isNotEmpty ? _orders.first : null;
+    return _currentOrder;
   }
 
   Order? getOrder(String id) {
@@ -79,7 +158,18 @@ class OrderProvider extends ChangeNotifier {
   }
 
   Future<bool> cancelOrder(String orderId) async {
-    await Future.delayed(const Duration(milliseconds: 500));
+    final response = await _apiClient.post(
+      ApiConstants.cancelOrder,
+      body: {'order_id': orderId},
+      requiresAuth: true,
+    );
+
+    if (!response.isSuccess) {
+      _error = '${response.message} (Code: ${response.code})';
+      notifyListeners();
+      return false;
+    }
+
     final index = _orders.indexWhere((o) => o.id == orderId);
     if (index >= 0) {
       _orders[index] = Order(

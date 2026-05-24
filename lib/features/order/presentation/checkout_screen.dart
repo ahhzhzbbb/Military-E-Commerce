@@ -20,15 +20,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   @override
   void initState() {
     super.initState();
-    _selectedAddress = OrderAddress(
-      id: 'addr_default',
-      name: 'Nguyễn Văn A',
-      phone: '0123456789',
-      address: 'Số 10, Đường Trần Hưng Đạo',
-      provinceName: 'Hà Nội',
-      districtName: 'Quận Hoàn Kiếm',
-      wardName: 'Phường Cửa Nam',
-    );
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadAddresses();
+    });
   }
 
   @override
@@ -37,29 +31,56 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     super.dispose();
   }
 
+  OrderAddress? _defaultAddress(List<OrderAddress> addresses) {
+    if (addresses.isEmpty) return null;
+    return addresses.firstWhere(
+      (address) => address.isDefault,
+      orElse: () => addresses.first,
+    );
+  }
+
+  Future<void> _loadAddresses() async {
+    final orderProvider = context.read<OrderProvider>();
+    await orderProvider.loadAddresses();
+    if (!mounted) return;
+
+    setState(() {
+      _selectedAddress ??= _defaultAddress(orderProvider.addresses);
+    });
+  }
+
   Future<void> _handlePlaceOrder() async {
-    if (_selectedAddress == null) {
+    final cartProvider = context.read<CartProvider>();
+    final orderProvider = context.read<OrderProvider>();
+    final selectedAddress =
+        _selectedAddress ?? _defaultAddress(orderProvider.addresses);
+
+    if (selectedAddress == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Vui lòng chọn địa chỉ giao hàng'),
+          content: Text('Vui lòng thêm địa chỉ giao hàng từ backend'),
           backgroundColor: AppColors.error,
         ),
       );
       return;
     }
 
-    final cartProvider = context.read<CartProvider>();
-    final orderProvider = context.read<OrderProvider>();
-
     final order = await orderProvider.createOrder(
       items: cartProvider.items,
-      shippingAddress: _selectedAddress!,
+      shippingAddress: selectedAddress,
       notes: _notesController.text.isNotEmpty ? _notesController.text : null,
     );
 
     if (order != null && mounted) {
       cartProvider.clearCart();
       _showOrderSuccessDialog(order);
+    } else if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(orderProvider.error ?? 'Không thể tạo đơn hàng'),
+          backgroundColor: AppColors.error,
+        ),
+      );
     }
   }
 
@@ -101,9 +122,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             onPressed: () {
               Navigator.of(context).popUntil((route) => route.isFirst);
             },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-            ),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
             child: const Text('Tiếp tục mua sắm'),
           ),
         ],
@@ -147,84 +166,135 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   }
 
   Widget _buildShippingAddressSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    return Consumer<OrderProvider>(
+      builder: (context, orderProvider, child) {
+        final selectedAddress =
+            _selectedAddress ?? _defaultAddress(orderProvider.addresses);
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Địa chỉ giao hàng',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: AppColors.textPrimary,
-              ),
-            ),
-            TextButton(
-              onPressed: () {},
-              child: const Text('Thay đổi'),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        if (_selectedAddress != null)
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.05),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
-            ),
-            child: Row(
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Icon(Icons.location_on, color: AppColors.primary),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        _selectedAddress!.name,
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      Text(
-                        _selectedAddress!.phone,
-                        style: const TextStyle(color: AppColors.textSecondary),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        _selectedAddress!.fullAddress,
-                        style: const TextStyle(
-                          color: AppColors.textSecondary,
-                          fontSize: 13,
-                        ),
-                      ),
-                    ],
+                const Text(
+                  'Địa chỉ giao hàng',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                TextButton(
+                  onPressed: orderProvider.addresses.isEmpty
+                      ? _loadAddresses
+                      : _showAddressPicker,
+                  child: Text(
+                    orderProvider.addresses.isEmpty ? 'Tải lại' : 'Thay đổi',
                   ),
                 ),
               ],
             ),
-          )
-        else
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              border: Border.all(color: AppColors.divider),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Row(
-              children: [
-                const Icon(Icons.add_location, color: AppColors.primary),
-                const SizedBox(width: 12),
-                const Text(
-                  'Thêm địa chỉ giao hàng',
-                  style: TextStyle(color: AppColors.primary),
+            const SizedBox(height: 8),
+            if (orderProvider.isLoading && orderProvider.addresses.isEmpty)
+              const Center(child: CircularProgressIndicator())
+            else if (selectedAddress != null)
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.05),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: AppColors.primary.withValues(alpha: 0.2),
+                  ),
                 ),
-              ],
-            ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.location_on, color: AppColors.primary),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            selectedAddress.name,
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          Text(
+                            selectedAddress.phone,
+                            style: const TextStyle(
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            selectedAddress.fullAddress,
+                            style: const TextStyle(
+                              color: AppColors.textSecondary,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            else
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  border: Border.all(color: AppColors.divider),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.location_off, color: AppColors.textHint),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        orderProvider.error ??
+                            'Backend chưa trả về địa chỉ giao hàng',
+                        style: const TextStyle(color: AppColors.textSecondary),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showAddressPicker() {
+    final addresses = context.read<OrderProvider>().addresses;
+    showModalBottomSheet(
+      context: context,
+      builder: (context) {
+        return SafeArea(
+          child: ListView.separated(
+            shrinkWrap: true,
+            itemCount: addresses.length,
+            separatorBuilder: (_, _) => const Divider(height: 1),
+            itemBuilder: (context, index) {
+              final address = addresses[index];
+              return ListTile(
+                leading: const Icon(Icons.location_on_outlined),
+                title: Text(address.name),
+                subtitle: Text(address.fullAddress),
+                trailing: _selectedAddress?.id == address.id
+                    ? const Icon(Icons.check, color: AppColors.primary)
+                    : null,
+                onTap: () {
+                  setState(() => _selectedAddress = address);
+                  Navigator.of(context).pop();
+                },
+              );
+            },
           ),
-      ],
+        );
+      },
     );
   }
 
@@ -405,10 +475,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 ),
                 child: const Text(
                   'Đặt hàng ngay',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
               ),
             ),

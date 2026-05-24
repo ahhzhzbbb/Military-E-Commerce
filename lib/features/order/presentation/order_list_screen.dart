@@ -13,7 +13,8 @@ class OrderListScreen extends StatefulWidget {
   State<OrderListScreen> createState() => _OrderListScreenState();
 }
 
-class _OrderListScreenState extends State<OrderListScreen> with SingleTickerProviderStateMixin {
+class _OrderListScreenState extends State<OrderListScreen>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
   @override
@@ -119,7 +120,10 @@ class _OrderListScreenState extends State<OrderListScreen> with SingleTickerProv
                       color: AppColors.textPrimary,
                     ),
                   ),
-                  _buildStatusBadge(order.status, order.statusName ?? order.status),
+                  _buildStatusBadge(
+                    order.status,
+                    order.statusName ?? order.status,
+                  ),
                 ],
               ),
               const Divider(height: 16),
@@ -242,22 +246,25 @@ class _OrderListScreenState extends State<OrderListScreen> with SingleTickerProv
   }
 
   void _showCancelOrderDialog(Order order) {
+    final orderProvider = context.read<OrderProvider>();
+    final messenger = ScaffoldMessenger.of(context);
+
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text('Hủy đơn hàng'),
         content: Text('Bạn có chắc muốn hủy đơn hàng ${order.id}?'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: () => Navigator.of(dialogContext).pop(),
             child: const Text('Không'),
           ),
           ElevatedButton(
             onPressed: () async {
-              Navigator.of(context).pop();
-              final success = await context.read<OrderProvider>().cancelOrder(order.id);
+              Navigator.of(dialogContext).pop();
+              final success = await orderProvider.cancelOrder(order.id);
               if (success && mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
+                messenger.showSnackBar(
                   const SnackBar(
                     content: Text('Đã hủy đơn hàng thành công'),
                     backgroundColor: AppColors.success,
@@ -265,9 +272,7 @@ class _OrderListScreenState extends State<OrderListScreen> with SingleTickerProv
                 );
               }
             },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.error,
-            ),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
             child: const Text('Hủy đơn'),
           ),
         ],

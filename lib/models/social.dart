@@ -1,3 +1,23 @@
+double? _toDouble(dynamic value) {
+  if (value == null) return null;
+  if (value is num) return value.toDouble();
+  return double.tryParse(value.toString());
+}
+
+int? _toInt(dynamic value) {
+  if (value == null) return null;
+  if (value is int) return value;
+  if (value is num) return value.toInt();
+  return int.tryParse(value.toString());
+}
+
+bool _toBool(dynamic value) {
+  if (value is bool) return value;
+  if (value is num) return value != 0;
+  final text = value?.toString().toLowerCase();
+  return text == 'true' || text == '1';
+}
+
 class Comment {
   final String id;
   final String? productId;
@@ -28,16 +48,17 @@ class Comment {
       id: json['id']?.toString() ?? '',
       productId: json['product_id']?.toString(),
       userId: json['user_id']?.toString(),
-      userName: json['user_name'],
+      userName: json['user_name'] ?? json['username'] ?? json['name'],
       userAvatar: json['user_avatar'],
       content: json['content'] ?? '',
-      likeCount: json['like_count'],
-      isLiked: json['is_liked'] == true || json['is_liked'] == 1,
+      likeCount: _toInt(json['like_count'] ?? json['like']),
+      isLiked: _toBool(json['is_liked']),
       createdAt: json['created_at'] != null
           ? DateTime.tryParse(json['created_at'].toString())
           : null,
       replies: (json['replies'] as List<dynamic>?)
-          ?.map((e) => Comment.fromJson(e as Map<String, dynamic>))
+          ?.whereType<Map>()
+          .map((e) => Comment.fromJson(Map<String, dynamic>.from(e)))
           .toList(),
     );
   }
@@ -84,9 +105,9 @@ class Rating {
       id: json['id']?.toString() ?? '',
       productId: json['product_id']?.toString(),
       userId: json['user_id']?.toString(),
-      userName: json['user_name'],
+      userName: json['user_name'] ?? json['username'] ?? json['name'],
       userAvatar: json['user_avatar'],
-      stars: json['stars'] ?? 0,
+      stars: _toInt(json['stars'] ?? json['rating'] ?? json['level']) ?? 0,
       comment: json['comment'],
       createdAt: json['created_at'] != null
           ? DateTime.tryParse(json['created_at'].toString())
@@ -124,7 +145,7 @@ class Notification {
       message: json['message'],
       image: json['image'],
       actionId: json['action_id']?.toString(),
-      isRead: json['is_read'] == true || json['is_read'] == 1,
+      isRead: _toBool(json['is_read']),
       createdAt: json['created_at'] != null
           ? DateTime.tryParse(json['created_at'].toString())
           : null,
@@ -167,7 +188,7 @@ class Conversation {
       productTitle: json['product_title'],
       productImage: json['product_image'],
       lastMessage: json['last_message'],
-      unreadCount: json['unread_count'],
+      unreadCount: _toInt(json['unread_count']),
       updatedAt: json['updated_at'] != null
           ? DateTime.tryParse(json['updated_at'].toString())
           : null,
@@ -201,7 +222,7 @@ class Message {
       senderId: json['sender_id']?.toString() ?? '',
       receiverId: json['receiver_id']?.toString(),
       content: json['content'] ?? '',
-      isRead: json['is_read'] == true || json['is_read'] == 1,
+      isRead: _toBool(json['is_read']),
       createdAt: json['created_at'] != null
           ? DateTime.tryParse(json['created_at'].toString())
           : null,
@@ -221,12 +242,19 @@ class WalletBalance {
   });
 
   factory WalletBalance.fromJson(Map<String, dynamic> json) {
-    final available = (json['available_balance'] as num?)?.toDouble() ?? 0;
-    final pending = (json['pending_balance'] as num?)?.toDouble() ?? 0;
+    final available =
+        _toDouble(
+          json['available_balance'] ??
+              json['available'] ??
+              json['balance'] ??
+              json['current_balance'],
+        ) ??
+        0;
+    final pending = _toDouble(json['pending_balance'] ?? json['pending']) ?? 0;
     return WalletBalance(
       availableBalance: available,
       pendingBalance: pending,
-      totalBalance: available + pending,
+      totalBalance: _toDouble(json['total_balance']) ?? available + pending,
     );
   }
 }
@@ -255,9 +283,9 @@ class BalanceTransaction {
       id: json['id']?.toString() ?? '',
       type: json['type'] ?? '',
       typeName: json['type_name'],
-      amount: (json['amount'] as num?)?.toDouble() ?? 0,
+      amount: _toDouble(json['amount']) ?? 0,
       description: json['description'],
-      balanceAfter: (json['balance_after'] as num?)?.toDouble(),
+      balanceAfter: _toDouble(json['balance_after']),
       createdAt: json['created_at'] != null
           ? DateTime.tryParse(json['created_at'].toString())
           : null,

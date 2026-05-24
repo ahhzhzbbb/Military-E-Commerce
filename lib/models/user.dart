@@ -27,19 +27,35 @@ class User {
     this.createdAt,
   });
 
+  static int? _toInt(dynamic value) {
+    if (value == null) return null;
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    return int.tryParse(value.toString());
+  }
+
+  static double? _toDouble(dynamic value) {
+    if (value == null) return null;
+    if (value is num) return value.toDouble();
+    return double.tryParse(value.toString());
+  }
+
   factory User.fromJson(Map<String, dynamic> json) {
     return User(
       id: json['id']?.toString() ?? '',
       email: json['email'],
-      phone: json['phone'],
-      username: json['username'],
+      phone: json['phone'] ?? json['phone_number'],
+      username: json['username'] ?? json['name'],
       avatar: json['avatar'],
       coverImage: json['cover_image'],
       address: json['address'],
-      followerCount: json['follower_count'],
-      followingCount: json['following_count'],
-      listingCount: json['listing_count'],
-      balance: (json['balance'] as num?)?.toDouble(),
+      followerCount: _toInt(json['follower_count']),
+      followingCount: _toInt(json['following_count']),
+      listingCount: _toInt(json['listing_count']),
+      balance:
+          _toDouble(json['balance']) ??
+          _toDouble(json['available_balance']) ??
+          _toDouble(json['current_balance']),
       createdAt: json['created_at'] != null
           ? DateTime.tryParse(json['created_at'].toString())
           : null,

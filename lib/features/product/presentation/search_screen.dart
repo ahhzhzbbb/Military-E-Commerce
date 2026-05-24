@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:military_e_commerce/core/api/api_client.dart';
+import 'package:military_e_commerce/core/api/api_data.dart';
+import 'package:military_e_commerce/core/constants/api_constants.dart';
 import 'package:military_e_commerce/core/constants/app_theme.dart';
 import 'package:military_e_commerce/core/widgets/common_widgets.dart';
-import 'package:military_e_commerce/core/utils/mock_data.dart';
 import 'package:military_e_commerce/models/models.dart';
 import 'product_detail_screen.dart';
 
@@ -13,6 +15,7 @@ class SearchScreen extends StatefulWidget {
 }
 
 class _SearchScreenState extends State<SearchScreen> {
+  final ApiClient _apiClient = ApiClient();
   final _searchController = TextEditingController();
   final _focusNode = FocusNode();
   List<Product> _searchResults = [];
@@ -20,6 +23,8 @@ class _SearchScreenState extends State<SearchScreen> {
   List<Category> _categories = [];
   bool _isSearching = false;
   String? _selectedCategoryId;
+  String? _error;
+  int _requestId = 0;
 
   @override
   void initState() {
@@ -35,35 +40,93 @@ class _SearchScreenState extends State<SearchScreen> {
   }
 
   Future<void> _loadCategories() async {
-    await Future.delayed(const Duration(milliseconds: 200));
-    setState(() {
-      _categories = MockData.getCategories();
-    });
+    final response = await _apiClient.post(ApiConstants.getCategories);
+    if (!mounted) return;
+
+    if (response.isSuccess) {
+      setState(() {
+        _categories = ApiData.asList(response.data, ['categories'])
+            .whereType<Map>()
+            .map((item) => Category.fromJson(Map<String, dynamic>.from(item)))
+            .toList();
+      });
+    } else {
+      setState(() => _error = response.message);
+    }
   }
 
   void _performSearch(String query) {
-    if (query.isEmpty) {
+    _runSearch(query: query);
+  }
+
+  dynamic _categoryParam(String categoryId) {
+    return int.tryParse(categoryId) ?? categoryId;
+  }
+
+  List<Product> _parseProducts(dynamic data) {
+    return ApiData.asList(data, ['products', 'items', 'list'])
+        .whereType<Map>()
+        .map((item) => Product.fromJson(Map<String, dynamic>.from(item)))
+        .toList();
+  }
+
+  Future<void> _runSearch({String? query}) async {
+    final rawQuery = query ?? _searchController.text;
+    final trimmedQuery = rawQuery.trim();
+
+    if (trimmedQuery.isEmpty && _selectedCategoryId == null) {
+      _requestId++;
       setState(() {
         _searchResults = [];
         _isSearching = false;
+        _error = null;
       });
       return;
     }
 
-    setState(() => _isSearching = true);
+    final currentRequestId = ++_requestId;
+    setState(() {
+      _isSearching = true;
+      _error = null;
+    });
 
-    Future.delayed(const Duration(milliseconds: 300), () {
+    try {
+      final response = await _apiClient.post(
+        ApiConstants.search,
+        body: {
+          'keyword': trimmedQuery.isNotEmpty ? trimmedQuery : ' ',
+          'index': 0,
+          'count': 20,
+          if (_selectedCategoryId != null)
+            'category_id': _categoryParam(_selectedCategoryId!),
+        },
+      );
+
+      if (!mounted || currentRequestId != _requestId) return;
+
+      if (!response.isSuccess) {
+        throw Exception('${response.message} (Code: ${response.code})');
+      }
+
       setState(() {
-        _searchResults = MockData.getProducts(keyword: query);
-        _isSearching = false;
-        if (!_recentSearches.contains(query)) {
-          _recentSearches.insert(0, query);
-          if (_recentSearches.length > 10) {
-            _recentSearches.removeLast();
-          }
+        _searchResults = _parseProducts(response.data);
+        if (trimmedQuery.isNotEmpty &&
+            !_recentSearches.contains(trimmedQuery)) {
+          _recentSearches.insert(0, trimmedQuery);
+          if (_recentSearches.length > 10) _recentSearches.removeLast();
         }
       });
-    });
+    } catch (e) {
+      if (!mounted || currentRequestId != _requestId) return;
+      setState(() {
+        _searchResults = [];
+        _error = e.toString();
+      });
+    } finally {
+      if (mounted && currentRequestId == _requestId) {
+        setState(() => _isSearching = false);
+      }
+    }
   }
 
   void _selectCategory(String? categoryId) {
@@ -71,27 +134,24 @@ class _SearchScreenState extends State<SearchScreen> {
       _selectedCategoryId = categoryId;
     });
 
-    if (categoryId != null) {
-      _performSearchByCategory(categoryId);
-    }
-  }
-
-  void _performSearchByCategory(String categoryId) {
-    setState(() => _isSearching = true);
-
-    Future.delayed(const Duration(milliseconds: 300), () {
+    if (categoryId == null && _searchController.text.trim().isEmpty) {
       setState(() {
-        _searchResults = MockData.getProducts(categoryId: categoryId);
-        _isSearching = false;
+        _searchResults = [];
+        _error = null;
       });
-    });
+      return;
+    }
+
+    _runSearch();
   }
 
   void _clearSearch() {
+    _requestId++;
     _searchController.clear();
     setState(() {
       _searchResults = [];
       _selectedCategoryId = null;
+      _error = null;
     });
   }
 
@@ -120,7 +180,10 @@ class _SearchScreenState extends State<SearchScreen> {
                     onPressed: _clearSearch,
                   )
                 : null,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 8,
+            ),
           ),
           onChanged: _performSearch,
           onSubmitted: _performSearch,
@@ -137,6 +200,14 @@ class _SearchScreenState extends State<SearchScreen> {
 
     if (_searchResults.isNotEmpty) {
       return _buildSearchResults();
+    }
+
+    if (_error != null) {
+      return EmptyState(
+        icon: Icons.error_outline,
+        title: 'Không tải được dữ liệu',
+        message: _error!,
+      );
     }
 
     if (_searchController.text.isEmpty && _selectedCategoryId == null) {
@@ -251,8 +322,12 @@ class _SearchScreenState extends State<SearchScreen> {
                       category.name,
                       style: TextStyle(
                         fontSize: 11,
-                        color: isSelected ? AppColors.primary : AppColors.textPrimary,
-                        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                        color: isSelected
+                            ? AppColors.primary
+                            : AppColors.textPrimary,
+                        fontWeight: isSelected
+                            ? FontWeight.bold
+                            : FontWeight.normal,
                       ),
                       textAlign: TextAlign.center,
                       maxLines: 2,
@@ -276,9 +351,7 @@ class _SearchScreenState extends State<SearchScreen> {
           padding: const EdgeInsets.all(16),
           child: Text(
             'Tìm thấy ${_searchResults.length} sản phẩm',
-            style: const TextStyle(
-              color: AppColors.textSecondary,
-            ),
+            style: const TextStyle(color: AppColors.textSecondary),
           ),
         ),
         Expanded(
@@ -317,7 +390,9 @@ class _SearchScreenState extends State<SearchScreen> {
               imageUrl: product.images.isNotEmpty ? product.images.first : null,
               height: 140,
               width: double.infinity,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(12),
+              ),
             ),
             Expanded(
               child: Padding(

@@ -75,10 +75,7 @@ class ApiClient {
       if (queryParams != null) {
         uri = uri.replace(queryParameters: queryParams);
       }
-      final response = await http.get(
-        uri,
-        headers: _headers,
-      );
+      final response = await http.get(uri, headers: _headers);
 
       return _handleResponse(response);
     } catch (e) {
@@ -95,11 +92,13 @@ class ApiClient {
       final data = jsonDecode(response.body);
       // Handle code as both string and int (API returns "1000" as string)
       final codeValue = data['code'];
-      final code = codeValue is int ? codeValue : int.tryParse(codeValue.toString()) ?? -1;
+      final code = codeValue is int
+          ? codeValue
+          : int.tryParse(codeValue.toString()) ?? -1;
       final message = data['message'] as String? ?? '';
       final responseData = data['data'];
 
-      if (code == ResponseCodes.ok) {
+      if (code == ResponseCodes.ok || code == ResponseCodes.noData) {
         return ApiResponse(
           isSuccess: true,
           message: message,
@@ -156,6 +155,9 @@ class ApiResponse {
   Map<String, dynamic>? getDataAsMap() {
     if (data == null) return null;
     if (data is Map<String, dynamic>) return data;
+    if (data is Map) {
+      return data.map((key, value) => MapEntry(key.toString(), value));
+    }
     return null;
   }
 

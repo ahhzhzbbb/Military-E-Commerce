@@ -57,35 +57,133 @@ class Product {
     this.updatedAt,
   });
 
+  static String? _toStringValue(dynamic value) {
+    if (value == null) return null;
+    final text = value.toString();
+    return text.isEmpty ? null : text;
+  }
+
+  static double? _toDouble(dynamic value) {
+    if (value == null) return null;
+    if (value is num) return value.toDouble();
+    return double.tryParse(value.toString());
+  }
+
+  static int? _toInt(dynamic value) {
+    if (value == null) return null;
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    return int.tryParse(value.toString());
+  }
+
+  static bool? _toBool(dynamic value) {
+    if (value == null) return null;
+    if (value is bool) return value;
+    if (value is num) return value != 0;
+    final text = value.toString().toLowerCase();
+    if (text == 'true' || text == '1') return true;
+    if (text == 'false' || text == '0') return false;
+    return null;
+  }
+
+  static List<String> _toStringList(dynamic value) {
+    if (value == null) return [];
+    if (value is List) {
+      return value
+          .where((item) => item != null && item.toString().isNotEmpty)
+          .map((item) => item.toString())
+          .toList();
+    }
+    final text = value.toString();
+    return text.isEmpty ? [] : [text];
+  }
+
+  static int? _stockFromVariants(dynamic value) {
+    if (value is! List) return null;
+    var total = 0;
+    var hasStock = false;
+
+    for (final item in value) {
+      if (item is Map) {
+        final stock = _toInt(item['stock']);
+        if (stock != null) {
+          total += stock;
+          hasStock = true;
+        }
+      }
+    }
+
+    return hasStock ? total : null;
+  }
+
+  static String? _nestedString(
+    Map<String, dynamic> json,
+    String objectKey,
+    List<String> keys,
+  ) {
+    final nested = json[objectKey];
+    if (nested is! Map) return null;
+
+    for (final key in keys) {
+      final value = _toStringValue(nested[key]);
+      if (value != null) return value;
+    }
+
+    return null;
+  }
+
   factory Product.fromJson(Map<String, dynamic> json) {
+    final regularPrice = _toDouble(json['price']);
+    final discountPrice =
+        _toDouble(json['price_new']) ?? _toDouble(json['price_discount']);
+    final hasDiscountPrice = discountPrice != null && discountPrice > 0;
+    final images = <String>[
+      ..._toStringList(json['images']),
+      ..._toStringList(json['image']),
+      ..._toStringList(json['image_url']),
+      ..._toStringList(json['image_urls']),
+    ];
+    final videoList = _toStringList(json['videos']);
+    final isStock = _toBool(json['is_stock']);
+
     return Product(
-      id: json['id']?.toString() ?? '',
-      title: json['title'] ?? '',
+      id: json['id']?.toString() ?? json['product_id']?.toString() ?? '',
+      title: json['title'] ?? json['name'] ?? '',
       description: json['description'],
-      price: (json['price'] as num?)?.toDouble() ?? 0.0,
-      originalPrice: (json['original_price'] as num?)?.toDouble(),
-      images: (json['images'] as List<dynamic>?)
-              ?.map((e) => e.toString())
-              .toList() ??
-          [],
-      video: json['video'],
+      price: hasDiscountPrice ? discountPrice : regularPrice ?? 0.0,
+      originalPrice:
+          _toDouble(json['original_price']) ??
+          (hasDiscountPrice ? regularPrice : null),
+      images: images,
+      video:
+          _toStringValue(json['video']) ??
+          (videoList.isNotEmpty ? videoList.first : null),
       categoryId: json['category_id']?.toString(),
-      categoryName: json['category_name'],
+      categoryName:
+          json['category_name'] ?? _nestedString(json, 'category', ['name']),
       brandId: json['brand_id']?.toString(),
-      brandName: json['brand_name'],
+      brandName: json['brand_name'] ?? _nestedString(json, 'brand', ['name']),
       size: json['size'],
       condition: json['condition'],
-      shipFrom: json['ship_from']?.toString(),
-      shipFromName: json['ship_from_name'],
-      stock: json['stock'],
-      soldCount: json['sold_count'],
-      likeCount: json['like_count'],
-      commentCount: json['comment_count'],
-      ratingCount: json['rating_count'],
-      ratingAverage: (json['rating_average'] as num?)?.toDouble(),
+      shipFrom:
+          json['ship_from']?.toString() ?? json['ship_from_id']?.toString(),
+      shipFromName:
+          json['ship_from_name'] ?? _nestedString(json, 'ship_from', ['name']),
+      stock:
+          _toInt(json['stock']) ??
+          _stockFromVariants(json['variants']) ??
+          (isStock == true ? 1 : null),
+      soldCount: _toInt(json['sold_count']) ?? _toInt(json['sold']),
+      likeCount: _toInt(json['like_count']) ?? _toInt(json['like']),
+      commentCount: _toInt(json['comment_count']) ?? _toInt(json['comment']),
+      ratingCount: _toInt(json['rating_count']),
+      ratingAverage: _toDouble(json['rating_average']),
       sellerId: json['seller_id']?.toString(),
-      sellerName: json['seller_name'],
-      sellerAvatar: json['seller_avatar'],
+      sellerName:
+          json['seller_name'] ??
+          _nestedString(json, 'seller', ['username', 'name']),
+      sellerAvatar:
+          json['seller_avatar'] ?? _nestedString(json, 'seller', ['avatar']),
       status: json['status'] ?? 'active',
       createdAt: json['created_at'] != null
           ? DateTime.tryParse(json['created_at'].toString())
@@ -128,8 +226,7 @@ class Product {
     };
   }
 
-  bool get hasDiscount =>
-      originalPrice != null && originalPrice! > price;
+  bool get hasDiscount => originalPrice != null && originalPrice! > price;
 
   double get discountPercentage {
     if (!hasDiscount) return 0;

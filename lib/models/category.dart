@@ -15,15 +15,25 @@ class Category {
     this.children = const [],
   });
 
+  static int? _toInt(dynamic value) {
+    if (value == null) return null;
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    return int.tryParse(value.toString());
+  }
+
   factory Category.fromJson(Map<String, dynamic> json) {
     return Category(
       id: json['id']?.toString() ?? '',
       name: json['name'] ?? '',
-      image: json['image'],
+      image: json['image'] ?? json['image_url'],
       parentId: json['parent_id']?.toString(),
-      productCount: json['product_count'],
-      children: (json['children'] as List<dynamic>?)
-              ?.map((e) => Category.fromJson(e as Map<String, dynamic>))
+      productCount: _toInt(json['product_count']),
+      children:
+          (json['children'] as List<dynamic>?)
+              ?.map(
+                (e) => Category.fromJson(Map<String, dynamic>.from(e as Map)),
+              )
               .toList() ??
           [],
     );
@@ -47,19 +57,14 @@ class Brand {
   final String? logo;
   final int? productCount;
 
-  Brand({
-    required this.id,
-    required this.name,
-    this.logo,
-    this.productCount,
-  });
+  Brand({required this.id, required this.name, this.logo, this.productCount});
 
   factory Brand.fromJson(Map<String, dynamic> json) {
     return Brand(
       id: json['id']?.toString() ?? '',
       name: json['name'] ?? '',
       logo: json['logo'],
-      productCount: json['product_count'],
+      productCount: Category._toInt(json['product_count']),
     );
   }
 }

@@ -1,60 +1,73 @@
 import 'package:flutter/material.dart';
-import '../../../core/utils/mock_data.dart';
+import '../../../core/api/api_client.dart';
+import '../../../core/api/api_data.dart';
+import '../../../core/constants/api_constants.dart';
 import '../../../models/models.dart';
 
 class WalletProvider extends ChangeNotifier {
+  final ApiClient _apiClient = ApiClient();
+
   WalletBalance? _balance;
   List<BalanceTransaction> _transactions = [];
   bool _isLoading = false;
+  String? _error;
 
   WalletBalance? get balance => _balance;
   List<BalanceTransaction> get transactions => _transactions;
   bool get isLoading => _isLoading;
+  String? get error => _error;
+
+  List<BalanceTransaction> _parseTransactions(dynamic data) {
+    return ApiData.asList(data, ['transactions', 'history', 'items', 'list'])
+        .whereType<Map>()
+        .map(
+          (item) =>
+              BalanceTransaction.fromJson(Map<String, dynamic>.from(item)),
+        )
+        .toList();
+  }
 
   Future<void> loadBalance() async {
     _isLoading = true;
+    _error = null;
     notifyListeners();
 
-    await Future.delayed(const Duration(milliseconds: 300));
-    _balance = MockData.getMockBalance();
+    final response = await _apiClient.post(
+      ApiConstants.getCurrentBalance,
+      body: <String, dynamic>{},
+      requiresAuth: true,
+    );
+
+    if (response.isSuccess) {
+      final data = ApiData.mapFrom(response.data);
+      _balance = data != null ? WalletBalance.fromJson(data) : null;
+    } else {
+      _balance = null;
+      _error = '${response.message} (Code: ${response.code})';
+    }
+
     _isLoading = false;
     notifyListeners();
   }
 
   Future<void> loadTransactions() async {
     _isLoading = true;
+    _error = null;
     notifyListeners();
 
-    await Future.delayed(const Duration(milliseconds: 300));
-    _transactions = [
-      BalanceTransaction(
-        id: 'tx1',
-        type: 'income',
-        typeName: 'Thu nhập',
-        amount: 100000,
-        description: 'Thưởng hoàn thành nhiệm vụ',
-        balanceAfter: 500000,
-        createdAt: DateTime.now().subtract(const Duration(days: 1)),
-      ),
-      BalanceTransaction(
-        id: 'tx2',
-        type: 'expense',
-        typeName: 'Chi tiêu',
-        amount: -25000,
-        description: 'Mua áo chống đạn Level IIIA',
-        balanceAfter: 400000,
-        createdAt: DateTime.now().subtract(const Duration(days: 2)),
-      ),
-      BalanceTransaction(
-        id: 'tx3',
-        type: 'income',
-        typeName: 'Thu nhập',
-        amount: 50000,
-        description: 'Quy đổi chiến tích tháng 5',
-        balanceAfter: 425000,
-        createdAt: DateTime.now().subtract(const Duration(days: 5)),
-      ),
-    ];
+    final response = await _apiClient.post(
+      ApiConstants.getBalanceHistory,
+      body: const {'index': 0, 'count': 50},
+      requiresAuth: true,
+    );
+
+    if (response.isSuccess) {
+      _transactions = _parseTransactions(response.data);
+    } else {
+      _transactions = [];
+      _error = '${response.message} (Code: ${response.code})';
+    }
+
     _isLoading = false;
     notifyListeners();
   }

@@ -1,12 +1,15 @@
 class ApiConstants {
-  static const String baseUrl = 'https://adware-merely-andrews-home.trycloudflare.com';
+  static const String baseUrl =
+      'https://adware-merely-andrews-home.trycloudflare.com';
   static const String apiVersion = '/api';
 
   static const String signup = '/auth/signup';
   static const String login = '/auth/login';
   static const String logout = '/auth/logout';
-  static const String createCodeResetPassword = '/auth/create_code_reset_password';
-  static const String checkCodeResetPassword = '/auth/check_code_reset_password';
+  static const String createCodeResetPassword =
+      '/auth/create_code_reset_password';
+  static const String checkCodeResetPassword =
+      '/auth/check_code_reset_password';
   static const String resetPassword = '/auth/reset_password';
   static const String changePassword = '/auth/change_password';
   static const String changeInfoAfterSignup = '/auth/change_info_after_signup';
@@ -17,7 +20,7 @@ class ApiConstants {
 
   static const String getCategories = '$apiVersion/get_categories';
   static const String getListProducts = '$apiVersion/get_list_products';
-  static const String getProduct = '$apiVersion/get_product';
+  static const String getProduct = '$apiVersion/get_products';
   static const String getListBrands = '$apiVersion/get_list_brands';
 
   static const String addProduct = '$apiVersion/add_product';
@@ -47,7 +50,8 @@ class ApiConstants {
   static const String sendMessage = '$apiVersion/send_message';
   static const String getListConversation = '$apiVersion/get_list_conversation';
   static const String getConversation = '$apiVersion/get_conversation';
-  static const String getConversationDetail = '$apiVersion/get_conversation_detail';
+  static const String getConversationDetail =
+      '$apiVersion/get_conversation_detail';
   static const String getNotification = '$apiVersion/get_notification';
   static const String setReadNotification = '$apiVersion/set_read_notification';
   static const String setReadMessage = '$apiVersion/set_read_message';
@@ -61,22 +65,26 @@ class ApiConstants {
   static const String editPurchase = '$apiVersion/edit_purchase';
   static const String cancelOrder = '$apiVersion/cancel_order';
   static const String setAcceptBuyer = '$apiVersion/set_accept_buyer';
-  static const String sellerMarkAsShipped = '$apiVersion/seller_mark_as_shipped';
-  static const String buyerConfirmReceived = '$apiVersion/buyer_confirm_received';
+  static const String sellerMarkAsShipped =
+      '$apiVersion/seller_mark_as_shipped';
+  static const String buyerConfirmReceived =
+      '$apiVersion/buyer_confirm_received';
   static const String getOrderTimeline = '$apiVersion/get_order_timeline';
   static const String refundOrder = '$apiVersion/refund_order';
 
   static const String getShipFrom = '$apiVersion/get_ship_from';
   static const String getShipFee = '$apiVersion/get_ship_fee';
   static const String getOrderStatus = '$apiVersion/get_order_status';
-  static const String getListOrderAddress = '$apiVersion/get_list_order_address';
+  static const String getListOrderAddress =
+      '$apiVersion/get_list_order_address';
   static const String addOrderAddress = '$apiVersion/add_order_address';
   static const String editOrderAddress = '$apiVersion/edit_order_address';
   static const String deleteOrderAddress = '$apiVersion/delete_order_address';
 
   static const String getCurrentBalance = '$apiVersion/get_current_balance';
   static const String getBalanceHistory = '$apiVersion/get_balance_history';
-  static const String createWithdrawRequest = '$apiVersion/create_withdraw_request';
+  static const String createWithdrawRequest =
+      '$apiVersion/create_withdraw_request';
   static const String setRequestWithdraw = '$apiVersion/set_request_withdraw';
   static const String getWithdrawHistory = '$apiVersion/get_withdraw_history';
 
@@ -88,7 +96,8 @@ class ApiConstants {
   static const String addBankAccount = '$apiVersion/add_bank_account';
   static const String editBankAccount = '$apiVersion/edit_bank_account';
   static const String deleteBankAccount = '$apiVersion/delete_bank_account';
-  static const String setDefaultBankAccount = '$apiVersion/set_default_bank_account';
+  static const String setDefaultBankAccount =
+      '$apiVersion/set_default_bank_account';
 }
 
 class ResponseCodes {
@@ -100,6 +109,7 @@ class ResponseCodes {
   static const int actionDonePreviously = 1010;
   static const int userNotExist = 1013;
   static const int codeVerifyIncorrect = 9993;
+  static const int noData = 9994;
   static const int userNotValidated = 9995;
   static const int tokenInvalid = 9998;
 }
