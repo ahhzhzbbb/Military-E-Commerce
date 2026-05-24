@@ -338,7 +338,7 @@ class HomeContent extends StatelessWidget {
                 borderRadius: BorderRadius.circular(12),
               ),
               child: CustomNetworkImage(
-                imageUrl: category.image,
+                imageUrl: category.imageUrl ?? 'https://upload.wikimedia.org/wikipedia/en/8/8e/%C4%90%E1%BA%A1i_h%E1%BB%8Dc_B%C3%A1ch_khoa_H%C3%A0_N%E1%BB%99i_%28logo%29.png',
                 borderRadius: BorderRadius.circular(12),
               ),
             ),

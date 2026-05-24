@@ -22,7 +22,7 @@ class _SearchScreenState extends State<SearchScreen> {
   final List<String> _recentSearches = [];
   List<Category> _categories = [];
   bool _isSearching = false;
-  String? _selectedCategoryId;
+  int? _selectedCategoryId;
   String? _error;
   int _requestId = 0;
 
@@ -59,8 +59,8 @@ class _SearchScreenState extends State<SearchScreen> {
     _runSearch(query: query);
   }
 
-  dynamic _categoryParam(String categoryId) {
-    return int.tryParse(categoryId) ?? categoryId;
+  dynamic _categoryParam(int categoryId) {
+    return categoryId;
   }
 
   List<Product> _parseProducts(dynamic data) {
@@ -129,7 +129,7 @@ class _SearchScreenState extends State<SearchScreen> {
     }
   }
 
-  void _selectCategory(String? categoryId) {
+  void _selectCategory(int? categoryId) {
     setState(() {
       _selectedCategoryId = categoryId;
     });
@@ -313,7 +313,7 @@ class _SearchScreenState extends State<SearchScreen> {
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: CustomNetworkImage(
-                        imageUrl: category.image,
+                        imageUrl: category.imageUrl,
                         borderRadius: BorderRadius.circular(12),
                       ),
                     ),

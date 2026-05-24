@@ -12,26 +12,29 @@ class ProductProvider extends ChangeNotifier {
   List<Product> _featuredProducts = [];
   bool _isLoading = false;
   String? _error;
-  String? _selectedCategoryId;
+  int? _selectedCategoryId;
 
   List<Category> get categories => _categories;
   List<Product> get products => _products;
   List<Product> get featuredProducts => _featuredProducts;
   bool get isLoading => _isLoading;
   String? get error => _error;
-  String? get selectedCategoryId => _selectedCategoryId;
+  int? get selectedCategoryId => _selectedCategoryId;
 
-  dynamic _categoryParam(String categoryId) {
-    return int.tryParse(categoryId) ?? categoryId;
+  // Helper method to handle category ID parameter (int or string)
+  dynamic _categoryParam(int categoryId) {
+    return categoryId;
   }
 
+  // Helper methods to parse API responses
   List<Category> _parseCategories(dynamic data) {
-    return ApiData.asList(data, ['categories'])
+    return ApiData.asList(data, ['data'])
         .whereType<Map>()
         .map((item) => Category.fromJson(Map<String, dynamic>.from(item)))
         .toList();
   }
 
+  // Helper method to parse products from API response
   List<Product> _parseProducts(dynamic data) {
     return ApiData.asList(data, ['products', 'items', 'list'])
         .whereType<Map>()
@@ -39,6 +42,7 @@ class ProductProvider extends ChangeNotifier {
         .toList();
   }
 
+  // Load categories from API
   Future<void> loadCategories() async {
     _isLoading = true;
     _error = null;
@@ -59,7 +63,8 @@ class ProductProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> loadProducts({String? categoryId, String? keyword}) async {
+  // Load products with optional category filter and search keyword
+  Future<void> loadProducts({int? categoryId, String? keyword}) async {
     _isLoading = true;
     _error = null;
     _selectedCategoryId = categoryId;
@@ -97,10 +102,13 @@ class ProductProvider extends ChangeNotifier {
     }
   }
 
+
+  // Load all products without any filters
   Future<void> loadAllProducts() async {
     await loadProducts();
   }
 
+  // Clear category filter and reload products
   void clearCategoryFilter() {
     _selectedCategoryId = null;
     loadProducts();

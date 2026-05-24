@@ -1,41 +1,49 @@
 class Category {
-  final String id;
+  final int id;
   final String name;
-  final String? image;
-  final String? parentId;
-  final int? productCount;
+  final int parentId;
+
+  final int sort;
+
+  final bool hasChild;
+  final bool hasBrand;
+  final bool hasSize;
+  final bool requireWeight;
+
+  final String? description;
+  final String? imageUrl;
+
   final List<Category> children;
 
   Category({
     required this.id,
     required this.name,
-    this.image,
-    this.parentId,
-    this.productCount,
+    required this.parentId,
+    required this.sort,
+    required this.hasChild,
+    required this.hasBrand,
+    required this.hasSize,
+    required this.requireWeight,
+    this.description,
+    this.imageUrl,
     this.children = const [],
   });
 
-  static int? _toInt(dynamic value) {
-    if (value == null) return null;
-    if (value is int) return value;
-    if (value is num) return value.toInt();
-    return int.tryParse(value.toString());
-  }
-
   factory Category.fromJson(Map<String, dynamic> json) {
     return Category(
-      id: json['id']?.toString() ?? '',
-      name: json['name'] ?? '',
-      image: json['image'] ?? json['image_url'],
-      parentId: json['parent_id']?.toString(),
-      productCount: _toInt(json['product_count']),
-      children:
-          (json['children'] as List<dynamic>?)
-              ?.map(
-                (e) => Category.fromJson(Map<String, dynamic>.from(e as Map)),
-              )
-              .toList() ??
-          [],
+      id: _toInt(json['id']) ?? 0,
+      name: json['name']?.toString() ?? '',
+      parentId: _toInt(json['parent_id']) ?? 0,
+
+      sort: _toInt(json['sort']) ?? 0,
+
+      hasChild: _toBool(json['has_child']),
+      hasBrand: _toBool(json['has_brand']),
+      hasSize: _toBool(json['has_size']),
+      requireWeight: _toBool(json['require_weight']),
+
+      description: json['description']?.toString(),
+      imageUrl: json['image_url']?.toString(),
     );
   }
 
@@ -43,28 +51,37 @@ class Category {
     return {
       'id': id,
       'name': name,
-      'image': image,
       'parent_id': parentId,
-      'product_count': productCount,
+      'sort': sort,
+      'has_child': hasChild,
+      'has_brand': hasBrand,
+      'has_size': hasSize,
+      'require_weight': requireWeight,
+      'description': description,
+      'image_url': imageUrl,
       'children': children.map((e) => e.toJson()).toList(),
     };
   }
-}
 
-class Brand {
-  final String id;
-  final String name;
-  final String? logo;
-  final int? productCount;
+  static int? _toInt(dynamic value) {
+    if (value == null) return null;
 
-  Brand({required this.id, required this.name, this.logo, this.productCount});
+    if (value is int) return value;
 
-  factory Brand.fromJson(Map<String, dynamic> json) {
-    return Brand(
-      id: json['id']?.toString() ?? '',
-      name: json['name'] ?? '',
-      logo: json['logo'],
-      productCount: Category._toInt(json['product_count']),
-    );
+    if (value is num) return value.toInt();
+
+    return int.tryParse(value.toString());
+  }
+
+  static bool _toBool(dynamic value) {
+    if (value == null) return false;
+
+    if (value is bool) return value;
+
+    if (value is int) return value == 1;
+
+    final str = value.toString().toLowerCase();
+
+    return str == '1' || str == 'true';
   }
 }
