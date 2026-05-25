@@ -27,7 +27,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => WalletProvider()),
       ],
       child: MaterialApp(
-        title: 'Sàn TMĐT Quân Đội',
+        title: 'Shopee thời chiến',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.lightTheme,
         home: const SplashScreen(),
@@ -97,7 +97,7 @@ class _SplashScreenState extends State<SplashScreen> {
               ),
               const SizedBox(height: 24),
               const Text(
-                'Sàn TMĐT Quân Đội',
+                'Shopee thời chiến',
                 style: TextStyle(
                   fontSize: 28,
                   fontWeight: FontWeight.bold,
@@ -106,7 +106,7 @@ class _SplashScreenState extends State<SplashScreen> {
               ),
               const SizedBox(height: 8),
               const Text(
-                'Mua sắm vũ khí & thiết bị quân sự',
+                'Leo rank cũng đồng đội',
                 style: TextStyle(
                   fontSize: 14,
                   color: Colors.white70,

@@ -91,7 +91,7 @@ class ProductProvider extends ChangeNotifier {
       }
 
       _products = _parseProducts(response.data);
-      _featuredProducts = _products.take(4).toList();
+      _featuredProducts = _products.take(5).toList();
     } catch (e) {
       _error = e.toString();
       _products = [];

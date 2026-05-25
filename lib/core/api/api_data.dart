@@ -1,3 +1,4 @@
+// This file contains utility functions for handling API data, such as converting dynamic values to maps or lists.
 class ApiData {
   ApiData._();
 

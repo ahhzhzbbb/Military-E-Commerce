@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../constants/api_constants.dart';
 
+// This file defines the ApiClient class, which is responsible for making API requests, handling authentication tokens, and processing responses. It provides methods for GET and POST requests, as well as token management functions.
 class ApiClient {
   static final ApiClient _instance = ApiClient._internal();
   factory ApiClient() => _instance;
