@@ -343,7 +343,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  item.product.title,
+                  item.product.name,
                   style: const TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w500,

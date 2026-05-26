@@ -401,7 +401,7 @@ class _SearchScreenState extends State<SearchScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      product.title,
+                      product.name,
                       style: const TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w500,
@@ -412,8 +412,8 @@ class _SearchScreenState extends State<SearchScreen> {
                     const Spacer(),
                     PriceDisplay(
                       price: product.price,
-                      originalPrice: product.originalPrice,
-                      showDiscountPercent: product.hasDiscount,
+                      originalPrice: product.price,
+                      // showDiscountPercent: product.hasDiscount,
                       style: const TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.bold,

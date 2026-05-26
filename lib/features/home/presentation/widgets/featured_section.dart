@@ -96,7 +96,7 @@ class _FeaturedProductItem extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      product.title,
+                      product.name,
                       style: const TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w500,
@@ -107,8 +107,8 @@ class _FeaturedProductItem extends StatelessWidget {
                     const SizedBox(height: 4),
                     PriceDisplay(
                       price: product.price,
-                      originalPrice: product.originalPrice,
-                      showDiscountPercent: product.hasDiscount,
+                      originalPrice: product.price,
+                      // showDiscountPercent: product.hasDiscount,
                     ),
                   ],
                 ),

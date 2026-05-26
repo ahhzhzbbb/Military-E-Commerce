@@ -70,7 +70,7 @@ class CartItem {
     };
   }
 
-  double get totalPrice => product.price * quantity;
+  int get totalPrice => product.price * quantity;
 
   CartItem copyWith({
     String? id,
@@ -314,13 +314,13 @@ class OrderItem {
 
     return OrderItem(
       id: json['id']?.toString() ?? json['item_id']?.toString() ?? '',
-      productId: json['product_id']?.toString() ?? product?.id,
-      productTitle: json['product_title'] ?? json['name'] ?? product?.title,
+      productId: json['product_id']?.toString() ?? json['productId']?.toString(),
+      productTitle: json['product_title'] ?? json['name'] ?? product?.name,
       productImage:
           json['product_image'] ??
           json['image'] ??
           (productImages.isNotEmpty ? productImages.first : null),
-      price: _toDouble(json['price']) ?? product?.price ?? 0,
+      price: _toDouble(json['price']) ?? 0,
       quantity: _toInt(json['quantity']) ?? 1,
       selectedSize: json['selected_size'],
     );

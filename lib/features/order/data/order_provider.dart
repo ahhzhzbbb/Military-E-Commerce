@@ -116,10 +116,10 @@ class OrderProvider extends ChangeNotifier {
       final response = await _apiClient.post(
         ApiConstants.createOrder,
         body: {
-          'product_id': _productIdParam(item.product.id),
+          'product_id': _productIdParam(item.product.id.toString()),
           'quantity': item.quantity,
           'address_id': shippingAddress.id,
-          'note': ?notes,
+          'note': notes,
         },
         requiresAuth: true,
       );

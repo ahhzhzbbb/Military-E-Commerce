@@ -114,30 +114,29 @@ class _ProductItem extends StatelessWidget {
                     top: Radius.circular(12),
                   ),
                 ),
-
-                if (product.hasDiscount)
-                  Positioned(
-                    top: 8,
-                    left: 8,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 6,
-                        vertical: 3,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppColors.error,
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        '-${product.discountPercentage.toStringAsFixed(0)}%',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ),
+                // if (product.hasDiscount)
+                //   Positioned(
+                //     top: 8,
+                //     left: 8,
+                //     child: Container(
+                //       padding: const EdgeInsets.symmetric(
+                //         horizontal: 6,
+                //         vertical: 3,
+                //       ),
+                //       decoration: BoxDecoration(
+                //         color: AppColors.error,
+                //         borderRadius: BorderRadius.circular(6),
+                //       ),
+                //       child: Text(
+                //         '-${product.discountPercentage.toStringAsFixed(0)}%',
+                //         style: const TextStyle(
+                //           color: Colors.white,
+                //           fontSize: 10,
+                //           fontWeight: FontWeight.bold,
+                //         ),
+                //       ),
+                //     ),
+                //   ),
               ],
             ),
 
@@ -147,7 +146,7 @@ class _ProductItem extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    product.title,
+                    product.name,
                     style: const TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w500,
@@ -161,33 +160,33 @@ class _ProductItem extends StatelessWidget {
 
                   Row(
                     children: [
-                      if (product.ratingAverage != null) ...[
-                        const Icon(
-                          Icons.star,
-                          size: 14,
-                          color: Colors.amber,
-                        ),
+                      // if (product.ratingAverage != null) ...[
+                      //   const Icon(
+                      //     Icons.star,
+                      //     size: 14,
+                      //     color: Colors.amber,
+                      //   ),
 
-                        const SizedBox(width: 2),
+                      //   const SizedBox(width: 2),
 
-                        Text(
-                          product.ratingAverage!.toStringAsFixed(1),
-                          style: const TextStyle(fontSize: 12),
-                        ),
+                      //   Text(
+                      //     product.ratingAverage!.toStringAsFixed(1),
+                      //     style: const TextStyle(fontSize: 12),
+                      //   ),
 
-                        const SizedBox(width: 8),
-                      ],
+                      //   const SizedBox(width: 8),
+                      // ],
 
-                      Expanded(
-                        child: Text(
-                          'Đã bán ${product.soldCount ?? 0}',
-                          style: const TextStyle(
-                            fontSize: 11,
-                            color: AppColors.textSecondary,
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
+                      // Expanded(
+                      //   child: Text(
+                      //     'Đã bán ${product.soldCount ?? 0}',
+                      //     style: const TextStyle(
+                      //       fontSize: 11,
+                      //       color: AppColors.textSecondary,
+                      //     ),
+                      //     overflow: TextOverflow.ellipsis,
+                      //   ),
+                      // ),
                     ],
                   ),
 
@@ -195,8 +194,8 @@ class _ProductItem extends StatelessWidget {
 
                   PriceDisplay(
                     price: product.price,
-                    originalPrice: product.originalPrice,
-                    showDiscountPercent: product.hasDiscount,
+                    originalPrice: product.price,
+                    // showDiscountPercent: product.hasDiscount,
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,

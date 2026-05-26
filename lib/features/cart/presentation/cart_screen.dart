@@ -80,7 +80,7 @@ class CartScreen extends StatelessWidget {
         cart.removeFromCart(item.id);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Đã xóa "${item.product.title}"'),
+            content: Text('Đã xóa "${item.product.name}" khỏi giỏ hàng'),
             action: SnackBarAction(
               label: 'Hoàn tác',
               onPressed: () {
@@ -116,7 +116,7 @@ class CartScreen extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      item.product.title,
+                      item.product.name,
                       style: const TextStyle(
                         fontWeight: FontWeight.w500,
                         fontSize: 14,
