@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:camera/camera.dart';
+import 'dart:io';
+import 'package:military_e_commerce/features/reward/presentation/camera_screen.dart';
+import 'package:military_e_commerce/features/reward/data/reward_controller.dart';
 
 class RewardScreen extends StatefulWidget {
   const RewardScreen({super.key});
@@ -11,13 +15,20 @@ class RewardScreen extends StatefulWidget {
 class _RewardScreenState extends State<RewardScreen> {
   List<PlatformFile>? _selectedFiles = [];
   bool _isLoading = false;
+  late final RewardController _rewardController;
+
+  @override
+  void initState() {
+    super.initState();
+    _rewardController = RewardController();
+  }
 
   Future<void> _pickFiles() async {
     try {
       setState(() => _isLoading = true);
       
       FilePickerResult? result = await FilePicker.platform.pickFiles(
-        allowMultiple: true,
+        allowMultiple: false,
         type: FileType.custom,
         allowedExtensions: ['jpg', 'jpeg', 'png'],
       );
@@ -40,6 +51,47 @@ class _RewardScreenState extends State<RewardScreen> {
     setState(() {
       _selectedFiles?.removeAt(index);
     });
+  }
+
+  Future<void> _openCamera() async {
+    try {
+      final cameras = await availableCameras();
+      if (!mounted) return;
+      
+      if (cameras.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Không có camera khả dụng')),
+        );
+        return;
+      }
+
+      final File? capturedPhoto = await Navigator.push<File>(
+        context,
+        MaterialPageRoute(
+          builder: (_) => CameraScreen(cameras: cameras),
+        ),
+      );
+
+      if (capturedPhoto != null && mounted) {
+        final platformFile = PlatformFile(
+          name: 'captured_${DateTime.now().millisecondsSinceEpoch}.jpg',
+          path: capturedPhoto.path,
+          size: await capturedPhoto.length(),
+        );
+
+        setState(() {
+          _selectedFiles?.add(platformFile);
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Ảnh đã được thêm vào danh sách')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Lỗi: $e')),
+      );
+    }
   }
 
   String _formatFileSize(int bytes) {
@@ -82,6 +134,11 @@ class _RewardScreenState extends State<RewardScreen> {
                 backgroundColor: const Color.fromARGB(255, 159, 4, 4),
                 foregroundColor: Colors.white,
               ),
+            ),
+            ElevatedButton.icon(
+              onPressed: _openCamera,
+              icon: const Icon(Icons.camera_alt),
+              label: const Text('Mở camera'),
             ),
             const SizedBox(height: 24),
             // File List Section
@@ -126,13 +183,25 @@ class _RewardScreenState extends State<RewardScreen> {
               // Upload Confirmation Button
               ElevatedButton(
                 onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        'Đã chọn ${_selectedFiles!.length} tệp để tải lên',
-                      ),
-                    ),
-                  );
+                  // ScaffoldMessenger.of(context).showSnackBar(
+                  //   SnackBar(
+                  //     content: Text(
+                  //       'Đã chọn ${_selectedFiles!.length} tệp để tải lên',
+                  //     ),
+                  //   ),
+                  // );
+                  _rewardController.uploadFile(_selectedFiles!.first).then((_) {
+                    if (_rewardController.error != null) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Lỗi: ${_rewardController.error}')),
+                      );
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Tải lên thành công!')),
+                      );
+                      setState(() => _selectedFiles = []);
+                    }
+                  });
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.green,
