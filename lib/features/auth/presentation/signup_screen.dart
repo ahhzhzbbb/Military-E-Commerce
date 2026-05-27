@@ -45,7 +45,6 @@ class _SignupScreenState extends State<SignupScreen> {
       final success = await authProvider.signup(
         phoneNumber: _phoneController.text.trim(),
         password: _passwordController.text,
-        username: _usernameController.text.trim(),
       );
 
       if (success && mounted) {
@@ -82,9 +81,7 @@ class _SignupScreenState extends State<SignupScreen> {
                 const SizedBox(height: 8),
                 const Text(
                   'Đăng ký để truy cập sàn thương mại điện tử quân đội',
-                  style: TextStyle(
-                    color: AppColors.textSecondary,
-                  ),
+                  style: TextStyle(color: AppColors.textSecondary),
                 ),
                 const SizedBox(height: 32),
                 Consumer<AuthProvider>(
@@ -145,7 +142,9 @@ class _SignupScreenState extends State<SignupScreen> {
                     prefixIcon: const Icon(Icons.lock_outline),
                     suffixIcon: IconButton(
                       icon: Icon(
-                        _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                        _obscurePassword
+                            ? Icons.visibility_off
+                            : Icons.visibility,
                       ),
                       onPressed: () {
                         setState(() {
@@ -173,7 +172,9 @@ class _SignupScreenState extends State<SignupScreen> {
                     prefixIcon: const Icon(Icons.lock_outline),
                     suffixIcon: IconButton(
                       icon: Icon(
-                        _obscureConfirmPassword ? Icons.visibility_off : Icons.visibility,
+                        _obscureConfirmPassword
+                            ? Icons.visibility_off
+                            : Icons.visibility,
                       ),
                       onPressed: () {
                         setState(() {
@@ -282,3 +283,4 @@ class _SignupScreenState extends State<SignupScreen> {
     );
   }
 }
+

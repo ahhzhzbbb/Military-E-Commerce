@@ -128,8 +128,7 @@ class AuthProvider extends ChangeNotifier {
   Future<bool> signup({
     required String phoneNumber,
     required String password,
-    required String username,
-    String? phone,
+    String uuid = "hoangpm",
   }) async {
     _status = AuthStatus.loading;
     _errorMessage = null;
@@ -138,12 +137,7 @@ class AuthProvider extends ChangeNotifier {
     try {
       final response = await _apiClient.post(
         ApiConstants.signup,
-        body: {
-          'phone_number': phoneNumber,
-          'password': password,
-          'username': username,
-          'phone': ?phone,
-        },
+        body: {'phone_number': phoneNumber, 'password': password, 'uuid': uuid},
         requiresAuth: false,
       );
 
