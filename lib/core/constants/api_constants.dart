@@ -80,7 +80,7 @@ class ApiConstants {
   static const String setRequestWithdraw = '$apiVersion/set_request_withdraw';
   static const String getWithdrawHistory = '$apiVersion/get_withdraw_history';
 
-  static const String uploadVideo = '$apiVersion/upload_video';
+  static const String uploadFile = '/upload/file';
   static const String getRewardHistory = '$apiVersion/get_reward_history';
   static const String createRewardAppeal = '$apiVersion/create_reward_appeal';
 

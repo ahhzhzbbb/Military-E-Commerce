@@ -32,6 +32,13 @@ class ApiClient {
 
   bool get isLoggedIn => _accessToken != null;
 
+  Future<String?> getAccessToken() async {
+    if (_accessToken == null) {
+      await loadTokens();
+    }
+    return _accessToken;
+  }
+
   Map<String, String> get _headers {
     final headers = <String, String>{
       'Content-Type': 'application/json',
