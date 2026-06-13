@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/constants/app_theme.dart';
 import '../../../../core/widgets/common_widgets.dart';
 import '../../../../models/models.dart';
+import '../product_reviews_screen.dart';
 
 class ProductTabsWidget extends StatefulWidget {
   final Product product;
@@ -34,7 +35,7 @@ class _ProductTabsWidgetState extends State<ProductTabsWidget> {
     return Row(
       children: [
         _buildTabItem('Mô tả', 0),
-        // _buildTabItem('Đánh giá (${widget.product.ratingCount ?? 0})', 1),
+        _buildTabItem('Đánh giá (${widget.product.ratingCount ?? 0})', 1),
         _buildTabItem('Câu hỏi', 2),
       ],
     );
@@ -109,23 +110,42 @@ class _ProductTabsWidgetState extends State<ProductTabsWidget> {
   }
 
   Widget _buildReviewsTab() {
-    if (widget.comments.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.all(32),
-        child: Center(child: Text('Chưa có đánh giá nào')),
-      );
-    }
-
-    return Column(
-      children: widget.comments
-          .map((comment) => _buildCommentItem(comment))
-          .toList(),
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        children: [
+          if (widget.comments.isEmpty)
+            const Text(
+              'Chưa có đánh giá nào',
+              style: TextStyle(color: AppColors.textSecondary),
+            )
+          else
+            ...widget.comments.take(3).map((comment) => _buildCommentItem(comment)),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => ProductReviewsScreen(
+                      productId: widget.product.id.toString(),
+                    ),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.rate_review),
+              label: const Text('Xem tất cả đánh giá'),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
   Widget _buildCommentItem(Comment comment) {
     return Padding(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.only(bottom: 12),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

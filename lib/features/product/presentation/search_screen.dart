@@ -411,9 +411,9 @@ class _SearchScreenState extends State<SearchScreen> {
                     ),
                     const Spacer(),
                     PriceDisplay(
-                      price: product.price,
-                      originalPrice: product.price,
-                      // showDiscountPercent: product.hasDiscount,
+                      price: product.effectivePrice,
+                      originalPrice: product.hasDiscount ? product.price : null,
+                      showDiscountPercent: product.hasDiscount,
                       style: const TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.bold,

@@ -200,8 +200,8 @@ class ErrorDisplay extends StatelessWidget {
 }
 
 class PriceDisplay extends StatelessWidget {
-  final int price;
-  final int? originalPrice;
+  final double price;
+  final double? originalPrice;
   final TextStyle? style;
   final TextStyle? originalStyle;
   final bool showDiscountPercent;

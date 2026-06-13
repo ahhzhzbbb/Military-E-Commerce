@@ -6,6 +6,10 @@ import 'package:military_e_commerce/models/models.dart';
 import 'package:military_e_commerce/features/auth/data/auth_provider.dart';
 import 'package:military_e_commerce/features/order/presentation/order_list_screen.dart';
 import 'package:military_e_commerce/features/wallet/data/wallet_provider.dart';
+import 'package:military_e_commerce/features/order/presentation/address_management_screen.dart';
+import 'package:military_e_commerce/features/social/presentation/following_screen.dart';
+import 'package:military_e_commerce/features/notifications/presentation/notification_screen.dart';
+import 'package:military_e_commerce/features/news/presentation/news_screen.dart';
 import 'profile_edit_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -387,7 +391,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
             icon: Icons.location_on_outlined,
             title: 'Địa chỉ giao hàng',
             subtitle: 'Quản lý địa chỉ nhận hàng',
-            onTap: () {},
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => const AddressManagementScreen(),
+                ),
+              );
+            },
           ),
           const Divider(height: 1),
           _buildMenuItem(
@@ -408,7 +418,39 @@ class _ProfileScreenState extends State<ProfileScreen> {
             icon: Icons.notifications_outlined,
             title: 'Thông báo',
             subtitle: 'Cài đặt thông báo',
-            onTap: () {},
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => const NotificationScreen(),
+                ),
+              );
+            },
+          ),
+          const Divider(height: 1),
+          _buildMenuItem(
+            icon: Icons.people_outline,
+            title: 'Theo dõi',
+            subtitle: 'Quản lý theo dõi & chặn',
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => const FollowingScreen(),
+                ),
+              );
+            },
+          ),
+          const Divider(height: 1),
+          _buildMenuItem(
+            icon: Icons.newspaper,
+            title: 'Tin tức',
+            subtitle: 'Cập nhật tin tức mới nhất',
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => const NewsScreen(),
+                ),
+              );
+            },
           ),
           const Divider(height: 1),
           _buildMenuItem(

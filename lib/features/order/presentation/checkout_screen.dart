@@ -228,7 +228,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            selectedAddress.fullAddress,
+                            selectedAddress.displayAddress,
                             style: const TextStyle(
                               color: AppColors.textSecondary,
                               fontSize: 13,
@@ -282,7 +282,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               return ListTile(
                 leading: const Icon(Icons.location_on_outlined),
                 title: Text(address.name),
-                subtitle: Text(address.fullAddress),
+                subtitle: Text(address.displayAddress),
                 trailing: _selectedAddress?.id == address.id
                     ? const Icon(Icons.check, color: AppColors.primary)
                     : null,

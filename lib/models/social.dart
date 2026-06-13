@@ -1,22 +1,4 @@
-double? _toDouble(dynamic value) {
-  if (value == null) return null;
-  if (value is num) return value.toDouble();
-  return double.tryParse(value.toString());
-}
-
-int? _toInt(dynamic value) {
-  if (value == null) return null;
-  if (value is int) return value;
-  if (value is num) return value.toInt();
-  return int.tryParse(value.toString());
-}
-
-bool _toBool(dynamic value) {
-  if (value is bool) return value;
-  if (value is num) return value != 0;
-  final text = value?.toString().toLowerCase();
-  return text == 'true' || text == '1';
-}
+import 'package:military_e_commerce/core/utils/parse_utils.dart';
 
 class Comment {
   final String id;
@@ -51,8 +33,8 @@ class Comment {
       userName: json['user_name'] ?? json['username'] ?? json['name'],
       userAvatar: json['user_avatar'],
       content: json['content'] ?? '',
-      likeCount: _toInt(json['like_count'] ?? json['like']),
-      isLiked: _toBool(json['is_liked']),
+      likeCount: toInt(json['like_count'] ?? json['like']),
+      isLiked: toBool(json['is_liked']),
       createdAt: json['created_at'] != null
           ? DateTime.tryParse(json['created_at'].toString())
           : null,
@@ -107,8 +89,8 @@ class Rating {
       userId: json['user_id']?.toString(),
       userName: json['user_name'] ?? json['username'] ?? json['name'],
       userAvatar: json['user_avatar'],
-      stars: _toInt(json['stars'] ?? json['rating'] ?? json['level']) ?? 0,
-      comment: json['comment'],
+      stars: toInt(json['stars'] ?? json['rating'] ?? json['level']) ?? 0,
+      comment: json['comment'] ?? json['content'],
       createdAt: json['created_at'] != null
           ? DateTime.tryParse(json['created_at'].toString())
           : null,
@@ -116,36 +98,42 @@ class Rating {
   }
 }
 
-class Notification {
+class AppNotification {
   final String id;
   final String type;
   final String title;
   final String? message;
   final String? image;
-  final String? actionId;
+  final String? avatar;
+  final int? productId;
+  final int? group;
   final bool isRead;
   final DateTime? createdAt;
 
-  Notification({
+  AppNotification({
     required this.id,
     required this.type,
     required this.title,
     this.message,
     this.image,
-    this.actionId,
+    this.avatar,
+    this.productId,
+    this.group,
     this.isRead = false,
     this.createdAt,
   });
 
-  factory Notification.fromJson(Map<String, dynamic> json) {
-    return Notification(
+  factory AppNotification.fromJson(Map<String, dynamic> json) {
+    return AppNotification(
       id: json['id']?.toString() ?? '',
       type: json['type'] ?? '',
       title: json['title'] ?? '',
       message: json['message'],
       image: json['image'],
-      actionId: json['action_id']?.toString(),
-      isRead: _toBool(json['is_read']),
+      avatar: json['avatar'],
+      productId: toInt(json['product_id']),
+      group: toInt(json['group']),
+      isRead: toBool(json['read'] ?? json['is_read']),
       createdAt: json['created_at'] != null
           ? DateTime.tryParse(json['created_at'].toString())
           : null,
@@ -182,13 +170,13 @@ class Conversation {
     return Conversation(
       id: json['id']?.toString() ?? '',
       partnerId: json['partner_id']?.toString(),
-      partnerName: json['partner_name'],
-      partnerAvatar: json['partner_avatar'],
+      partnerName: json['partner_name'] ?? json['username'],
+      partnerAvatar: json['partner_avatar'] ?? json['avatar'],
       productId: json['product_id']?.toString(),
       productTitle: json['product_title'],
       productImage: json['product_image'],
       lastMessage: json['last_message'],
-      unreadCount: _toInt(json['unread_count']),
+      unreadCount: toInt(json['unread_count']),
       updatedAt: json['updated_at'] != null
           ? DateTime.tryParse(json['updated_at'].toString())
           : null,
@@ -204,6 +192,7 @@ class Message {
   final String content;
   final bool isRead;
   final DateTime? createdAt;
+  final bool isMine;
 
   Message({
     required this.id,
@@ -213,19 +202,22 @@ class Message {
     required this.content,
     this.isRead = false,
     this.createdAt,
+    this.isMine = false,
   });
 
-  factory Message.fromJson(Map<String, dynamic> json) {
+  factory Message.fromJson(Map<String, dynamic> json, {String? currentUserId}) {
     return Message(
       id: json['id']?.toString() ?? '',
       conversationId: json['conversation_id']?.toString() ?? '',
-      senderId: json['sender_id']?.toString() ?? '',
+      senderId: json['sender_id']?.toString() ?? json['user_id']?.toString() ?? '',
       receiverId: json['receiver_id']?.toString(),
       content: json['content'] ?? '',
-      isRead: _toBool(json['is_read']),
+      isRead: toBool(json['is_read']),
       createdAt: json['created_at'] != null
           ? DateTime.tryParse(json['created_at'].toString())
           : null,
+      isMine: currentUserId != null &&
+          json['sender_id']?.toString() == currentUserId,
     );
   }
 }
@@ -243,18 +235,18 @@ class WalletBalance {
 
   factory WalletBalance.fromJson(Map<String, dynamic> json) {
     final available =
-        _toDouble(
+        toDouble(
           json['available_balance'] ??
               json['available'] ??
               json['balance'] ??
               json['current_balance'],
         ) ??
         0;
-    final pending = _toDouble(json['pending_balance'] ?? json['pending']) ?? 0;
+    final pending = toDouble(json['pending_balance'] ?? json['pending']) ?? 0;
     return WalletBalance(
       availableBalance: available,
       pendingBalance: pending,
-      totalBalance: _toDouble(json['total_balance']) ?? available + pending,
+      totalBalance: toDouble(json['total_balance']) ?? available + pending,
     );
   }
 }
@@ -283,9 +275,47 @@ class BalanceTransaction {
       id: json['id']?.toString() ?? '',
       type: json['type'] ?? '',
       typeName: json['type_name'],
-      amount: _toDouble(json['amount']) ?? 0,
+      amount: toDouble(json['amount']) ?? 0,
       description: json['description'],
-      balanceAfter: _toDouble(json['balance_after']),
+      balanceAfter: toDouble(json['balance_after']),
+      createdAt: json['created_at'] != null
+          ? DateTime.tryParse(json['created_at'].toString())
+          : null,
+    );
+  }
+}
+
+class SavedSearch {
+  final String id;
+  final String keyword;
+  final DateTime? createdAt;
+
+  SavedSearch({required this.id, required this.keyword, this.createdAt});
+
+  factory SavedSearch.fromJson(Map<String, dynamic> json) {
+    return SavedSearch(
+      id: json['id']?.toString() ?? '',
+      keyword: json['keyword'] ?? json['search'] ?? '',
+      createdAt: json['created_at'] != null
+          ? DateTime.tryParse(json['created_at'].toString())
+          : null,
+    );
+  }
+}
+
+class NewsItem {
+  final String id;
+  final String? title;
+  final String? content;
+  final DateTime? createdAt;
+
+  NewsItem({required this.id, this.title, this.content, this.createdAt});
+
+  factory NewsItem.fromJson(Map<String, dynamic> json) {
+    return NewsItem(
+      id: json['id']?.toString() ?? '',
+      title: json['title']?.toString(),
+      content: json['content']?.toString(),
       createdAt: json['created_at'] != null
           ? DateTime.tryParse(json['created_at'].toString())
           : null,

@@ -8,6 +8,9 @@ import 'features/home/data/product_provider.dart';
 import 'features/cart/data/cart_provider.dart';
 import 'features/order/data/order_provider.dart';
 import 'features/wallet/data/wallet_provider.dart';
+import 'features/chat/data/chat_provider.dart';
+import 'features/notifications/data/notification_provider.dart';
+import 'features/social/data/follow_provider.dart';
 
 void main() {
   runApp(const MyApp());
@@ -25,6 +28,9 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => CartProvider()),
         ChangeNotifierProvider(create: (_) => OrderProvider()),
         ChangeNotifierProvider(create: (_) => WalletProvider()),
+        ChangeNotifierProvider(create: (_) => ChatProvider()),
+        ChangeNotifierProvider(create: (_) => NotificationProvider()),
+        ChangeNotifierProvider(create: (_) => FollowProvider()),
       ],
       child: MaterialApp(
         title: 'Shopee thời chiến',
@@ -106,7 +112,7 @@ class _SplashScreenState extends State<SplashScreen> {
               ),
               const SizedBox(height: 8),
               const Text(
-                'Leo rank cũng đồng đội',
+                'Leo rank cùng đồng đội',
                 style: TextStyle(
                   fontSize: 14,
                   color: Colors.white70,

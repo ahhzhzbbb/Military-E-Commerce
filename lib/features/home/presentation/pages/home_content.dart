@@ -4,13 +4,40 @@ import 'package:provider/provider.dart';
 import '../../../../core/constants/app_theme.dart';
 import '../../../../core/widgets/common_widgets.dart';
 import '../../../auth/data/auth_provider.dart';
-import '../widgets/balance_card.dart';
+import '../../../notifications/data/notification_provider.dart';
+import '../../../notifications/presentation/notification_screen.dart';
+import '../widgets/compact_balance_bar.dart';
+import '../widgets/promo_banner.dart';
 import '../widgets/categories_section.dart';
 import '../widgets/featured_section.dart';
 import '../widgets/all_products_section.dart';
 
 class HomeContent extends StatelessWidget {
   const HomeContent({super.key});
+
+  static const _bannerItems = [
+    BannerItem(
+      title: 'Flash Sale',
+      subtitle: 'Giảm đến 50% - Chỉ hôm nay!',
+      badge: 'HOT',
+      icon: Icons.bolt,
+      gradientColors: [Color(0xFFFF6F00), Color(0xFFFF8F00)],
+    ),
+    BannerItem(
+      title: 'Hàng mới về',
+      subtitle: 'Cập nhật trang bị mới nhất',
+      badge: 'MỚI',
+      icon: Icons.new_releases,
+      gradientColors: [Color(0xFF1565C0), Color(0xFF1E88E5)],
+    ),
+    BannerItem(
+      title: 'Ưu đãi thành viên',
+      subtitle: 'Tích xu đổi quà hấp dẫn',
+      badge: 'VIP',
+      icon: Icons.card_giftcard,
+      gradientColors: [AppColors.primary, AppColors.primaryLight],
+    ),
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -22,8 +49,10 @@ class HomeContent extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const SizedBox(height: 16),
-                const BalanceCard(),
+                const SizedBox(height: 12),
+                const CompactBalanceBar(),
+                const SizedBox(height: 12),
+                PromoBanner(items: _bannerItems),
                 const SizedBox(height: 16),
                 const CategoriesSection(),
                 const SizedBox(height: 24),
@@ -80,9 +109,45 @@ class HomeContent extends StatelessWidget {
         ],
       ),
       actions: [
-        IconButton(
-          icon: const Icon(Icons.notifications_outlined),
-          onPressed: () {},
+        Consumer<NotificationProvider>(
+          builder: (context, notifProvider, child) {
+            return IconButton(
+              icon: Stack(
+                children: [
+                  const Icon(Icons.notifications_outlined),
+                  if (notifProvider.unreadCount > 0)
+                    Positioned(
+                      right: 0,
+                      top: 0,
+                      child: Container(
+                        padding: const EdgeInsets.all(2),
+                        decoration: const BoxDecoration(
+                          color: AppColors.error,
+                          shape: BoxShape.circle,
+                        ),
+                        constraints: const BoxConstraints(minWidth: 14, minHeight: 14),
+                        child: Text(
+                          '${notifProvider.unreadCount}',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => const NotificationScreen(),
+                  ),
+                );
+              },
+            );
+          },
         ),
         Consumer<AuthProvider>(
           builder: (context, auth, child) {

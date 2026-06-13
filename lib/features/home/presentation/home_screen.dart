@@ -4,6 +4,8 @@ import 'package:provider/provider.dart';
 import '../data/product_provider.dart';
 import '../../cart/presentation/cart_screen.dart';
 import '../../profile/presentation/profile_screen.dart';
+import '../../chat/presentation/conversation_list_screen.dart';
+import '../../chat/data/chat_provider.dart';
 import 'pages/home_content.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -33,6 +35,7 @@ class _HomeScreenState extends State<HomeScreen> {
         children: const [
           HomeContent(),
           SearchScreen(),
+          ConversationListScreen(),
           CartScreen(),
           ProfileScreen(),
         ],
@@ -43,6 +46,9 @@ class _HomeScreenState extends State<HomeScreen> {
           setState(() {
             _currentIndex = index;
           });
+          if (index == 2) {
+            context.read<ChatProvider>().loadConversations();
+          }
         },
         items: const [
           BottomNavigationBarItem(
@@ -54,6 +60,11 @@ class _HomeScreenState extends State<HomeScreen> {
             icon: Icon(Icons.search_outlined),
             activeIcon: Icon(Icons.search),
             label: 'Tìm kiếm',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.chat_bubble_outline),
+            activeIcon: Icon(Icons.chat_bubble),
+            label: 'Tin nhắn',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.shopping_cart_outlined),
