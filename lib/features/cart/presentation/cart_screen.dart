@@ -43,7 +43,9 @@ class CartScreen extends StatelessWidget {
               title: 'Giỏ hàng trống',
               message: 'Hãy thêm sản phẩm vào giỏ hàng để tiến hành mua sắm',
               buttonText: 'Tiếp tục mua sắm',
-              onButtonPressed: () {},
+              onButtonPressed: () {
+                Navigator.of(context).pop();
+              },
             );
           }
 

@@ -28,22 +28,24 @@ class ProductHeader extends StatelessWidget {
       flexibleSpace: FlexibleSpaceBar(
         background: Stack(
           children: [
-            // PageView.builder(
-            //   itemCount: product.images.length,
-            //   onPageChanged: onImageChanged,
-            //   itemBuilder: (context, index) {
-            //     return CustomNetworkImage(
-            //       imageUrl: product.images[index],
-            //       fit: BoxFit.cover,
-            //     );
-            //   },
-            // ),
-            Positioned.fill(
-              child: CustomNetworkImage(
-                imageUrl: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSYfHBhwXN6fyapdWLc7iKc8r99gh0O2GzOSw&s',
-                fit: BoxFit.cover,
+            if (product.images.isNotEmpty)
+              PageView.builder(
+                itemCount: product.images.length,
+                onPageChanged: onImageChanged,
+                itemBuilder: (context, index) {
+                  return CustomNetworkImage(
+                    imageUrl: product.images[index],
+                    fit: BoxFit.cover,
+                  );
+                },
+              )
+            else
+              Positioned.fill(
+                child: CustomNetworkImage(
+                  imageUrl: null,
+                  fit: BoxFit.cover,
+                ),
               ),
-            ),
             if (product.images.length > 1)
               Positioned(
                 bottom: 16,

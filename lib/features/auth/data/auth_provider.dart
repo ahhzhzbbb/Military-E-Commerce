@@ -128,22 +128,21 @@ class AuthProvider extends ChangeNotifier {
   Future<bool> signup({
     required String phoneNumber,
     required String password,
-    required String username,
-    String? phone,
+    String? username,
   }) async {
     _status = AuthStatus.loading;
     _errorMessage = null;
     notifyListeners();
 
     try {
+      final body = <String, dynamic>{
+        'phone_number': phoneNumber,
+        'password': password,
+        'uuid': 'flutter_device_${DateTime.now().millisecondsSinceEpoch}',
+      };
       final response = await _apiClient.post(
         ApiConstants.signup,
-        body: {
-          'phone_number': phoneNumber,
-          'password': password,
-          'username': username,
-          'phone': ?phone,
-        },
+        body: body,
         requiresAuth: false,
       );
 
@@ -153,6 +152,13 @@ class AuthProvider extends ChangeNotifier {
 
         if (token != null && token.isNotEmpty) {
           await _apiClient.setTokens(token, _extractRefreshToken(data!));
+          if (username != null && username.isNotEmpty) {
+            await _apiClient.post(
+              ApiConstants.changeInfoAfterSignup,
+              body: {'username': username},
+              requiresAuth: true,
+            );
+          }
           final fetchedUser = await _fetchCurrentUser();
           _user = fetchedUser ?? _userFromData(data);
           _status = AuthStatus.authenticated;
@@ -247,7 +253,7 @@ class AuthProvider extends ChangeNotifier {
 
     final response = await _apiClient.post(
       ApiConstants.changePassword,
-      body: {'old_password': oldPassword, 'new_password': newPassword},
+      body: {'password': oldPassword, 'new_password': newPassword},
       requiresAuth: true,
     );
 

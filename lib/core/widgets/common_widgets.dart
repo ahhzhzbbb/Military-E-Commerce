@@ -54,10 +54,20 @@ class CustomNetworkImage extends StatelessWidget {
     return Container(
       width: width,
       height: height,
-      color: AppColors.divider,
-      child: const Icon(
-        Icons.image_not_supported_outlined,
-        color: AppColors.textHint,
+      color: AppColors.divider.withValues(alpha: 0.3),
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.image_outlined,
+              color: AppColors.textHint.withValues(alpha: 0.6),
+              size: (height != null && height! < 80) ? 24 : 40,
+            ),
+            if (height == null || height! > 80)
+              const SizedBox(height: 4),
+          ],
+        ),
       ),
     );
   }
@@ -200,8 +210,8 @@ class ErrorDisplay extends StatelessWidget {
 }
 
 class PriceDisplay extends StatelessWidget {
-  final int price;
-  final int? originalPrice;
+  final double price;
+  final double? originalPrice;
   final TextStyle? style;
   final TextStyle? originalStyle;
   final bool showDiscountPercent;

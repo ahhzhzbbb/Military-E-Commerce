@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../../../core/constants/app_theme.dart';
 import '../../../../core/widgets/common_widgets.dart';
 import '../../../../models/models.dart';
+import '../../../social/data/follow_provider.dart';
 
 class SellerInfoWidget extends StatelessWidget {
   final Product product;
@@ -10,6 +12,7 @@ class SellerInfoWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final sellerId = product.seller?.id ?? product.sellerId ?? '';
     return Padding(
       padding: const EdgeInsets.all(16),
       child: Row(
@@ -50,7 +53,25 @@ class SellerInfoWidget extends StatelessWidget {
               ],
             ),
           ),
-          OutlinedButton(onPressed: () {}, child: const Text('Theo dõi')),
+          if (sellerId.isNotEmpty)
+            Consumer<FollowProvider>(
+              builder: (context, followProvider, child) {
+                final isFollowed = followProvider.isFollowing(sellerId);
+                return OutlinedButton(
+                  onPressed: () => followProvider.toggleFollow(sellerId),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: isFollowed ? AppColors.textSecondary : AppColors.primary,
+                    side: BorderSide(
+                      color: isFollowed ? AppColors.divider : AppColors.primary,
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                  ),
+                  child: Text(isFollowed ? 'Đang theo dõi' : 'Theo dõi'),
+                );
+              },
+            )
+          else
+            const OutlinedButton(onPressed: null, child: Text('Theo dõi')),
         ],
       ),
     );

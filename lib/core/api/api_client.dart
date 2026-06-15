@@ -3,7 +3,6 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../constants/api_constants.dart';
 
-// This file defines the ApiClient class, which is responsible for making API requests, handling authentication tokens, and processing responses. It provides methods for GET and POST requests, as well as token management functions.
 class ApiClient {
   static final ApiClient _instance = ApiClient._internal();
   factory ApiClient() => _instance;
@@ -32,6 +31,13 @@ class ApiClient {
 
   bool get isLoggedIn => _accessToken != null;
 
+  Future<String?> getAccessToken() async {
+    if (_accessToken == null) {
+      await loadTokens();
+    }
+    return _accessToken;
+  }
+
   Map<String, String> get _headers {
     final headers = <String, String>{
       'Content-Type': 'application/json',
@@ -55,7 +61,6 @@ class ApiClient {
         headers: _headers,
         body: body != null ? jsonEncode(body) : null,
       );
-
       return _handleResponse(response);
     } catch (e) {
       return ApiResponse(
@@ -77,7 +82,6 @@ class ApiClient {
         uri = uri.replace(queryParameters: queryParams);
       }
       final response = await http.get(uri, headers: _headers);
-
       return _handleResponse(response);
     } catch (e) {
       return ApiResponse(
@@ -88,10 +92,80 @@ class ApiClient {
     }
   }
 
+  Future<ApiResponse> patch(
+    String endpoint, {
+    Map<String, dynamic>? body,
+    bool requiresAuth = false,
+  }) async {
+    try {
+      final uri = Uri.parse('${ApiConstants.baseUrl}$endpoint');
+      final response = await http.patch(
+        uri,
+        headers: _headers,
+        body: body != null ? jsonEncode(body) : null,
+      );
+      return _handleResponse(response);
+    } catch (e) {
+      return ApiResponse(
+        isSuccess: false,
+        message: 'Network error: ${e.toString()}',
+        code: -1,
+      );
+    }
+  }
+
+  Future<ApiResponse> delete(
+    String endpoint, {
+    Map<String, dynamic>? body,
+    bool requiresAuth = false,
+  }) async {
+    try {
+      final uri = Uri.parse('${ApiConstants.baseUrl}$endpoint');
+      final request = http.Request('DELETE', uri);
+      request.headers.addAll(_headers);
+      if (body != null) {
+        request.body = jsonEncode(body);
+      }
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+      return _handleResponse(response);
+    } catch (e) {
+      return ApiResponse(
+        isSuccess: false,
+        message: 'Network error: ${e.toString()}',
+        code: -1,
+      );
+    }
+  }
+
+  Future<ApiResponse> uploadFile(
+    String endpoint, {
+    required String filePath,
+    required String field,
+  }) async {
+    try {
+      final uri = Uri.parse('${ApiConstants.baseUrl}$endpoint');
+      final request = http.MultipartRequest('POST', uri);
+      request.headers.addAll({
+        'Accept': 'application/json',
+        if (_accessToken != null) 'Authorization': 'Bearer $_accessToken',
+      });
+      request.files.add(await http.MultipartFile.fromPath(field, filePath));
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+      return _handleResponse(response);
+    } catch (e) {
+      return ApiResponse(
+        isSuccess: false,
+        message: 'Upload error: ${e.toString()}',
+        code: -1,
+      );
+    }
+  }
+
   ApiResponse _handleResponse(http.Response response) {
     try {
       final data = jsonDecode(response.body);
-      // Handle code as both string and int (API returns "1000" as string)
       final codeValue = data['code'];
       final code = codeValue is int
           ? codeValue

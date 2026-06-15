@@ -4,17 +4,32 @@ import '../../../core/constants/app_theme.dart';
 import '../../../core/widgets/common_widgets.dart';
 import '../../../models/models.dart';
 import '../data/order_provider.dart';
+import 'order_timeline_widget.dart';
+import '../../product/presentation/product_reviews_screen.dart';
 
-class OrderDetailScreen extends StatelessWidget {
+class OrderDetailScreen extends StatefulWidget {
   final String orderId;
 
   const OrderDetailScreen({super.key, required this.orderId});
 
   @override
+  State<OrderDetailScreen> createState() => _OrderDetailScreenState();
+}
+
+class _OrderDetailScreenState extends State<OrderDetailScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<OrderProvider>().loadOrderTimeline(widget.orderId);
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Consumer<OrderProvider>(
       builder: (context, orderProvider, child) {
-        final order = orderProvider.getOrder(orderId);
+        final order = orderProvider.getOrder(widget.orderId);
 
         if (order == null) {
           return Scaffold(
@@ -32,20 +47,152 @@ class OrderDetailScreen extends StatelessWidget {
             backgroundColor: AppColors.primary,
             foregroundColor: Colors.white,
           ),
-          body: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildStatusSection(order),
-                _buildAddressSection(order),
-                _buildItemsSection(order),
-                _buildSummarySection(order),
-                if (order.status == 'delivered') _buildReviewSection(context, order),
-              ],
-            ),
+          body: Column(
+            children: [
+              Expanded(
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildStatusSection(order),
+                      _buildAddressSection(order),
+                      _buildItemsSection(order),
+                      _buildSummarySection(order),
+                      if (order.timeline != null && order.timeline!.isNotEmpty)
+                        OrderTimelineWidget(timeline: order.timeline!),
+                      if (order.status == 'delivered') _buildReviewSection(context, order),
+                    ],
+                  ),
+                ),
+              ),
+              _buildBottomActions(orderProvider, order),
+            ],
           ),
         );
       },
+    );
+  }
+
+  Widget _buildBottomActions(OrderProvider orderProvider, Order order) {
+    final actions = <Widget>[];
+
+    if (order.status == 'pending') {
+      actions.add(
+        Expanded(
+          child: OutlinedButton(
+            onPressed: () async {
+              final confirmed = await showDialog<bool>(
+                context: context,
+                builder: (context) => AlertDialog(
+                  title: const Text('Hủy đơn hàng'),
+                  content: const Text('Bạn có chắc muốn hủy đơn hàng này?'),
+                  actions: [
+                    TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Không')),
+                    ElevatedButton(
+                      onPressed: () => Navigator.of(context).pop(true),
+                      style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
+                      child: const Text('Hủy đơn'),
+                    ),
+                  ],
+                ),
+              );
+              if (confirmed == true && mounted) {
+                final success = await orderProvider.cancelOrder(order.id);
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(success ? 'Đã hủy đơn hàng' : orderProvider.error ?? 'Không thể hủy'),
+                      backgroundColor: success ? AppColors.success : AppColors.error,
+                    ),
+                  );
+                }
+              }
+            },
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppColors.error,
+              side: const BorderSide(color: AppColors.error),
+            ),
+            child: const Text('Hủy đơn hàng'),
+          ),
+        ),
+      );
+    }
+
+    if (order.status == 'shipping') {
+      actions.add(
+        Expanded(
+          child: ElevatedButton(
+            onPressed: () async {
+              final confirmed = await showDialog<bool>(
+                context: context,
+                builder: (context) => AlertDialog(
+                  title: const Text('Xác nhận đã nhận hàng'),
+                  content: const Text('Bạn đã nhận được hàng?'),
+                  actions: [
+                    TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Chưa')),
+                    ElevatedButton(
+                      onPressed: () => Navigator.of(context).pop(true),
+                      child: const Text('Đã nhận'),
+                    ),
+                  ],
+                ),
+              );
+              if (confirmed == true && mounted) {
+                final success = await orderProvider.buyerConfirmReceived(order.id);
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(success ? 'Đã xác nhận nhận hàng' : orderProvider.error ?? 'Thao tác thất bại'),
+                      backgroundColor: success ? AppColors.success : AppColors.error,
+                    ),
+                  );
+                }
+              }
+            },
+            child: const Text('Đã nhận hàng'),
+          ),
+        ),
+      );
+    }
+
+    if (order.status == 'delivered') {
+      actions.add(
+        Expanded(
+          child: ElevatedButton.icon(
+            onPressed: () {
+              for (final item in order.items) {
+                if (item.productId != null) {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => ProductReviewsScreen(productId: item.productId!),
+                    ),
+                  );
+                  break;
+                }
+              }
+            },
+            icon: const Icon(Icons.star_outline),
+            label: const Text('Đánh giá'),
+          ),
+        ),
+      );
+    }
+
+    if (actions.isEmpty) return const SizedBox.shrink();
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 4,
+            offset: const Offset(0, -1),
+          ),
+        ],
+      ),
+      child: SafeArea(child: Row(children: actions)),
     );
   }
 
@@ -232,7 +379,7 @@ class OrderDetailScreen extends StatelessWidget {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        order.shippingAddress!.fullAddress,
+                        order.shippingAddress!.displayAddress,
                         style: const TextStyle(
                           color: AppColors.textSecondary,
                           fontSize: 13,
@@ -416,7 +563,18 @@ class OrderDetailScreen extends StatelessWidget {
           SizedBox(
             width: double.infinity,
             child: OutlinedButton.icon(
-              onPressed: () {},
+              onPressed: () {
+                for (final item in order.items) {
+                  if (item.productId != null) {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => ProductReviewsScreen(productId: item.productId!),
+                      ),
+                    );
+                    break;
+                  }
+                }
+              },
               icon: const Icon(Icons.star_outline),
               label: const Text('Đánh giá ngay'),
             ),
