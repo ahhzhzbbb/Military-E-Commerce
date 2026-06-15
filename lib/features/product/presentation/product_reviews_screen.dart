@@ -77,7 +77,7 @@ class _ProductReviewsScreenState extends State<ProductReviewsScreen> {
       body: {
         'product_id': productId,
         'level': stars,
-        if (comment != null) 'content': comment,
+        'content': ?comment,
       },
       requiresAuth: true,
     );

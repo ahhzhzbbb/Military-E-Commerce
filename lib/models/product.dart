@@ -1,6 +1,6 @@
 import 'package:military_e_commerce/models/brand.dart';
 import 'package:military_e_commerce/models/category.dart';
-import 'package:military_e_commerce/models/productSize.dart';
+import 'package:military_e_commerce/models/product_size.dart';
 import 'package:military_e_commerce/models/seller.dart';
 import 'package:military_e_commerce/core/utils/parse_utils.dart';
 

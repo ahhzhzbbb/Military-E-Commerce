@@ -12,7 +12,7 @@ class FollowProvider extends ChangeNotifier {
   List<User> _blocked = [];
   bool _isLoading = false;
   String? _error;
-  Map<String, bool> _followStatus = {};
+  final Map<String, bool> _followStatus = {};
 
   List<User> get following => _following;
   List<User> get followers => _followers;

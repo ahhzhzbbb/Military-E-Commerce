@@ -76,7 +76,7 @@ class _NewsScreenState extends State<NewsScreen> {
                   child: ListView.separated(
                     padding: const EdgeInsets.all(16),
                     itemCount: _news.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 12),
+                    separatorBuilder: (_, _) => const SizedBox(height: 12),
                     itemBuilder: (context, index) => _buildNewsItem(_news[index]),
                   ),
                 ),

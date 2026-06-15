@@ -63,7 +63,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
             onRefresh: () => provider.loadNotifications(),
             child: ListView.separated(
               itemCount: provider.notifications.length,
-              separatorBuilder: (_, __) => const Divider(height: 1),
+              separatorBuilder: (_, _) => const Divider(height: 1),
               itemBuilder: (context, index) {
                 final notification = provider.notifications[index];
                 return _buildNotificationItem(provider, notification);

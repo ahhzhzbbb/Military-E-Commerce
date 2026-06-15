@@ -59,8 +59,8 @@ class ChatProvider extends ChangeNotifier {
     final body = <String, dynamic>{
       'index': index,
       'count': count,
-      if (partnerId != null) 'partner_id': partnerId,
-      if (conversationId != null) 'conversation_id': conversationId,
+      'partner_id': ?partnerId,
+      'conversation_id': ?conversationId,
     };
 
     final response = await _apiClient.post(

@@ -280,7 +280,7 @@ class OrderProvider extends ChangeNotifier {
       ApiConstants.refundOrder,
       body: {
         'order_id': int.tryParse(orderId) ?? orderId,
-        if (reason != null) 'reason': reason,
+        'reason': ?reason,
       },
       requiresAuth: true,
     );

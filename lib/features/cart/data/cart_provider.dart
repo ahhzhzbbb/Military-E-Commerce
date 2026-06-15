@@ -68,6 +68,6 @@ class CartProvider extends ChangeNotifier {
   }
 
   bool isInCart(String productId) {
-    return _items.any((item) => item.product.id == productId);
+    return _items.any((item) => item.product.id.toString() == productId);
   }
 }

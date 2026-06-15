@@ -204,12 +204,12 @@ class AuthProvider extends ChangeNotifier {
 
     try {
       final body = <String, dynamic>{
-        if (username != null) 'username': username,
-        if (email != null) 'email': email,
-        if (phone != null) 'phone': phone,
-        if (avatar != null) 'avatar': avatar,
-        if (coverImage != null) 'cover_image': coverImage,
-        if (address != null) 'address': address,
+        'username': ?username,
+        'email': ?email,
+        'phone': ?phone,
+        'avatar': ?avatar,
+        'cover_image': ?coverImage,
+        'address': ?address,
       };
       final response = await _apiClient.post(
         ApiConstants.setUserInfo,

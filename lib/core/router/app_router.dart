@@ -24,7 +24,7 @@ class AppRouter {
 }
 
 class _HomePage extends StatelessWidget {
-  const _HomePage({Key? key}) : super(key: key);
+  const _HomePage();
 
   @override
   Widget build(BuildContext context) {
@@ -37,7 +37,7 @@ class _HomePage extends StatelessWidget {
 
 class _NotFoundPage extends StatelessWidget {
   final String? name;
-  const _NotFoundPage({Key? key, this.name}) : super(key: key);
+  const _NotFoundPage({this.name});
 
   @override
   Widget build(BuildContext context) {

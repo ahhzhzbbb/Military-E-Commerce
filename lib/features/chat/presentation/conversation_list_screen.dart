@@ -48,7 +48,7 @@ class _ConversationListScreenState extends State<ConversationListScreen> {
             onRefresh: () => chat.loadConversations(),
             child: ListView.separated(
               itemCount: chat.conversations.length,
-              separatorBuilder: (_, __) => const Divider(height: 1),
+              separatorBuilder: (_, _) => const Divider(height: 1),
               itemBuilder: (context, index) {
                 final conversation = chat.conversations[index];
                 return _buildConversationItem(context, conversation);

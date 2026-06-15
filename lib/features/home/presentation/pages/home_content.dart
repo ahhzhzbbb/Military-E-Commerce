@@ -39,6 +39,13 @@ class HomeContent extends StatelessWidget {
     ),
   ];
 
+  String _greeting() {
+    final hour = DateTime.now().hour;
+    if (hour < 12) return 'Chào buổi sáng';
+    if (hour < 18) return 'Chào buổi chiều';
+    return 'Chào buổi tối';
+  }
+
   @override
   Widget build(BuildContext context) {
     return SafeArea(
@@ -49,16 +56,18 @@ class HomeContent extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                _buildGreeting(context),
                 const SizedBox(height: 12),
                 const CompactBalanceBar(),
-                const SizedBox(height: 12),
+                const SizedBox(height: 14),
                 PromoBanner(items: _bannerItems),
-                const SizedBox(height: 16),
+                const SizedBox(height: 20),
                 const CategoriesSection(),
-                const SizedBox(height: 24),
+                const SizedBox(height: 20),
                 const FeaturedSection(),
-                const SizedBox(height: 24),
+                const SizedBox(height: 20),
                 const AllProductsSection(),
+                const SizedBox(height: 24),
               ],
             ),
           ),
@@ -67,46 +76,92 @@ class HomeContent extends StatelessWidget {
     );
   }
 
-  SliverAppBar _buildAppBar(BuildContext context) {
-    return SliverAppBar(
-      floating: true,
-      backgroundColor: AppColors.primary,
-      title: Row(
-        children: [
-          const Icon(Icons.shield, color: Colors.white),
-          const SizedBox(width: 8),
-          Expanded(
-            child: GestureDetector(
-              onTap: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (context) => const SearchScreen(),
-                  ),
-                );
-              },
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 8,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: const Row(
+  Widget _buildGreeting(BuildContext context) {
+    return Consumer<AuthProvider>(
+      builder: (context, auth, _) {
+        final name = auth.user?.username ?? 'Chiến hữu';
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(Icons.search, color: Colors.white, size: 20),
-                    SizedBox(width: 8),
                     Text(
-                      'Tìm kiếm sản phẩm...',
-                      style: TextStyle(color: Colors.white70),
+                      '${_greeting()}, $name!',
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    const Text(
+                      'Tìm kiếm trang bị tốt nhất cho bạn',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: AppColors.textSecondary,
+                      ),
                     ),
                   ],
                 ),
               ),
-            ),
+              const SizedBox(width: 8),
+              CircleAvatar(
+                radius: 22,
+                backgroundColor: AppColors.primary.withValues(alpha: 0.1),
+                child: auth.user?.avatar != null
+                    ? ClipOval(
+                        child: CustomNetworkImage(
+                          imageUrl: auth.user!.avatar,
+                          width: 44,
+                          height: 44,
+                        ),
+                      )
+                    : const Icon(
+                        Icons.person,
+                        color: AppColors.primary,
+                        size: 24,
+                      ),
+              ),
+            ],
           ),
-        ],
+        );
+      },
+    );
+  }
+
+  SliverAppBar _buildAppBar(BuildContext context) {
+    return SliverAppBar(
+      floating: true,
+      backgroundColor: AppColors.primary,
+      title: GestureDetector(
+        onTap: () {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (context) => const SearchScreen(),
+            ),
+          );
+        },
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.2),
+            borderRadius: BorderRadius.circular(24),
+          ),
+          child: const Row(
+            children: [
+              Icon(Icons.search, color: Colors.white, size: 20),
+              SizedBox(width: 8),
+              Text(
+                'Tìm kiếm sản phẩm...',
+                style: TextStyle(color: Colors.white70, fontSize: 14),
+              ),
+            ],
+          ),
+        ),
       ),
       actions: [
         Consumer<NotificationProvider>(
@@ -146,30 +201,6 @@ class HomeContent extends StatelessWidget {
                   ),
                 );
               },
-            );
-          },
-        ),
-        Consumer<AuthProvider>(
-          builder: (context, auth, child) {
-            return Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: CircleAvatar(
-                radius: 16,
-                backgroundColor: Colors.white24,
-                child: auth.user?.avatar != null
-                    ? ClipOval(
-                        child: CustomNetworkImage(
-                          imageUrl: auth.user!.avatar,
-                          width: 32,
-                          height: 32,
-                        ),
-                      )
-                    : const Icon(
-                        Icons.person,
-                        color: Colors.white,
-                        size: 18,
-                      ),
-              ),
             );
           },
         ),
