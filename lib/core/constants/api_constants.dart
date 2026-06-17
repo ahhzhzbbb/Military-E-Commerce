@@ -1,5 +1,5 @@
 class ApiConstants {
-  static const String baseUrl = 'https://impacts-hardwood-interior-wanted.trycloudflare.com';
+  static const String baseUrl = 'http://128.199.87.51:8001';
 
   static const String signup = '/auth/signup';
   static const String login = '/auth/login';
