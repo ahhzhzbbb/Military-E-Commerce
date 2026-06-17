@@ -46,7 +46,7 @@ class User {
       email: json['email'],
       phone: json['phone'] ?? json['phone_number'],
       username: json['username'] ?? json['name'],
-      avatar: json['avatar'],
+      avatar: json['avatar'] ?? json['image'],
       coverImage: json['cover_image'],
       address: json['address'],
       followerCount: _toInt(json['follower_count']),

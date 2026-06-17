@@ -13,6 +13,7 @@ class FollowProvider extends ChangeNotifier {
   bool _isLoading = false;
   String? _error;
   final Map<String, bool> _followStatus = {};
+  String? _currentUserId;
 
   List<User> get following => _following;
   List<User> get followers => _followers;
@@ -22,6 +23,10 @@ class FollowProvider extends ChangeNotifier {
 
   bool isFollowing(String userId) => _followStatus[userId] ?? false;
 
+  void setCurrentUserId(String? userId) {
+    _currentUserId = userId;
+  }
+
   List<User> _parseUsers(dynamic data) {
     return ApiData.asList(data, ['users', 'items', 'list', 'followers', 'following', 'blocks'])
         .whereType<Map>()
@@ -29,19 +34,48 @@ class FollowProvider extends ChangeNotifier {
         .toList();
   }
 
-  Future<void> loadFollowing() async {
+  void _parseFollowStatusFromList(List<dynamic> rawList) {
+    for (final item in rawList) {
+      if (item is Map) {
+        final id = item['id']?.toString();
+        final followed = item['followed'];
+        if (id != null && id.isNotEmpty) {
+          if (followed is bool) {
+            _followStatus[id] = followed;
+          } else if (followed is int) {
+            _followStatus[id] = followed != 0;
+          } else if (followed is num) {
+            _followStatus[id] = followed != 0;
+          }
+        }
+      }
+    }
+  }
+
+  Future<void> loadFollowing({String? userId}) async {
     _isLoading = true;
     _error = null;
     notifyListeners();
 
+    final effectiveUserId = userId ?? _currentUserId;
+    final body = <String, dynamic>{
+      'index': 0,
+      'count': 50,
+    };
+    if (effectiveUserId != null && effectiveUserId.isNotEmpty) {
+      body['user_id'] = int.tryParse(effectiveUserId) ?? effectiveUserId;
+    }
+
     final response = await _apiClient.post(
       ApiConstants.getListFollowing,
-      body: const {'index': 0, 'count': 50},
+      body: body,
       requiresAuth: true,
     );
 
     if (response.isSuccess) {
+      final rawList = ApiData.asList(response.data, []);
       _following = _parseUsers(response.data);
+      _parseFollowStatusFromList(rawList);
       for (final user in _following) {
         _followStatus[user.id] = true;
       }
@@ -53,19 +87,30 @@ class FollowProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> loadFollowers() async {
+  Future<void> loadFollowers({String? userId}) async {
     _isLoading = true;
     _error = null;
     notifyListeners();
 
+    final effectiveUserId = userId ?? _currentUserId;
+    final body = <String, dynamic>{
+      'index': 0,
+      'count': 50,
+    };
+    if (effectiveUserId != null && effectiveUserId.isNotEmpty) {
+      body['user_id'] = int.tryParse(effectiveUserId) ?? effectiveUserId;
+    }
+
     final response = await _apiClient.post(
       ApiConstants.getListFollowed,
-      body: const {'index': 0, 'count': 50},
+      body: body,
       requiresAuth: true,
     );
 
     if (response.isSuccess) {
+      final rawList = ApiData.asList(response.data, []);
       _followers = _parseUsers(response.data);
+      _parseFollowStatusFromList(rawList);
     } else {
       _followers = [];
     }
@@ -97,16 +142,30 @@ class FollowProvider extends ChangeNotifier {
 
   Future<bool> toggleFollow(String userId) async {
     final isCurrentlyFollowing = isFollowing(userId);
+    final action = isCurrentlyFollowing ? 'unfollow' : 'follow';
 
     final response = await _apiClient.post(
       ApiConstants.setUserFollow,
-      body: {'user_id': int.tryParse(userId) ?? userId},
+      body: {
+        'followee_id': int.tryParse(userId) ?? userId,
+        'action': action,
+      },
       requiresAuth: true,
     );
 
     if (response.isSuccess) {
-      _followStatus[userId] = !isCurrentlyFollowing;
-      if (!isCurrentlyFollowing) {
+      final data = response.getDataAsMap();
+      if (data != null) {
+        final isNowFollowing = data['is_following'];
+        if (isNowFollowing is bool) {
+          _followStatus[userId] = isNowFollowing;
+        } else {
+          _followStatus[userId] = action == 'follow';
+        }
+      } else {
+        _followStatus[userId] = action == 'follow';
+      }
+      if (_followStatus[userId] == true) {
         if (!_following.any((u) => u.id == userId)) {
           await loadFollowing();
         }
@@ -116,13 +175,26 @@ class FollowProvider extends ChangeNotifier {
       notifyListeners();
       return true;
     }
+
+    if (response.code == ResponseCodes.actionDonePreviously) {
+      await loadFollowing();
+      notifyListeners();
+      return true;
+    }
+
     return false;
   }
 
   Future<bool> toggleBlock(String userId) async {
+    final isCurrentlyBlocked = _blocked.any((u) => u.id == userId);
+    final type = isCurrentlyBlocked ? 1 : 0;
+
     final response = await _apiClient.post(
       ApiConstants.setUserBlock,
-      body: {'user_id': int.tryParse(userId) ?? userId},
+      body: {
+        'user_id': int.tryParse(userId) ?? userId,
+        'type': type,
+      },
       requiresAuth: true,
     );
 

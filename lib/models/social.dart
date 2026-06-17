@@ -31,7 +31,7 @@ class Comment {
       productId: json['product_id']?.toString(),
       userId: json['user_id']?.toString(),
       userName: json['user_name'] ?? json['username'] ?? json['name'],
-      userAvatar: json['user_avatar'],
+      userAvatar: json['user_avatar'] ?? json['avatar'],
       content: json['content'] ?? '',
       likeCount: toInt(json['like_count'] ?? json['like']),
       isLiked: toBool(json['is_liked']),
@@ -88,12 +88,14 @@ class Rating {
       productId: json['product_id']?.toString(),
       userId: json['user_id']?.toString(),
       userName: json['user_name'] ?? json['username'] ?? json['name'],
-      userAvatar: json['user_avatar'],
+      userAvatar: json['user_avatar'] ?? json['avatar'],
       stars: toInt(json['stars'] ?? json['rating'] ?? json['level']) ?? 0,
       comment: json['comment'] ?? json['content'],
       createdAt: json['created_at'] != null
           ? DateTime.tryParse(json['created_at'].toString())
-          : null,
+          : (json['created'] != null
+              ? DateTime.tryParse(json['created'].toString())
+              : null),
     );
   }
 }
