@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../../core/constants/app_theme.dart';
 import '../../../core/widgets/common_widgets.dart';
 import '../../../models/models.dart';
+import 'package:shimmer/shimmer.dart';
 import '../data/order_provider.dart';
 
 class AddressManagementScreen extends StatefulWidget {
@@ -32,7 +33,7 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
       body: Consumer<OrderProvider>(
         builder: (context, orderProvider, child) {
           if (orderProvider.isLoading && orderProvider.addresses.isEmpty) {
-            return const LoadingIndicator(message: 'Đang tải...');
+            return _buildAddressShimmer();
           }
 
           if (orderProvider.addresses.isEmpty) {
@@ -73,6 +74,36 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
           );
         },
       ),
+    );
+  }
+
+  Widget _buildAddressShimmer() {
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: List.generate(3, (_) => Shimmer.fromColors(
+        baseColor: AppColors.shimmerBase,
+        highlightColor: AppColors.shimmerHighlight,
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: AppColors.divider),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(height: 16, width: 120, color: Colors.white),
+              const SizedBox(height: 8),
+              Container(height: 13, width: 140, color: Colors.white),
+              const SizedBox(height: 6),
+              Container(height: 13, width: double.infinity, color: Colors.white),
+              const SizedBox(height: 6),
+              Container(height: 13, width: 200, color: Colors.white),
+            ],
+          ),
+        ),
+      )),
     );
   }
 

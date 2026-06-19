@@ -34,6 +34,7 @@ class ApiConstants {
   static const String search = '/api/search';
   static const String saveSearch = '/api/save_search';
   static const String getListSavedSearch = '/api/get_list_saved_search';
+  static const String delSavedSearch = '/api/del_saved_search';
   static const String getListNews = '/News/list_news';
   static const String getNews = '/News';
 

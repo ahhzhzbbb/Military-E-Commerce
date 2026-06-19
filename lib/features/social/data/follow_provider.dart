@@ -23,6 +23,11 @@ class FollowProvider extends ChangeNotifier {
 
   bool isFollowing(String userId) => _followStatus[userId] ?? false;
 
+  void setFollowStatus(String userId, bool value) {
+    _followStatus[userId] = value;
+    notifyListeners();
+  }
+
   void setCurrentUserId(String? userId) {
     _currentUserId = userId;
   }

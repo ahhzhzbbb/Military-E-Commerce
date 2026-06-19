@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../../core/constants/app_theme.dart';
 import '../../../core/widgets/common_widgets.dart';
 import '../../../models/models.dart';
+import 'package:shimmer/shimmer.dart';
 import '../../cart/data/cart_provider.dart';
 import '../data/order_provider.dart';
 
@@ -197,7 +198,27 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             ),
             const SizedBox(height: 8),
             if (orderProvider.isLoading && orderProvider.addresses.isEmpty)
-              const Center(child: CircularProgressIndicator())
+              Shimmer.fromColors(
+                baseColor: AppColors.shimmerBase,
+                highlightColor: AppColors.shimmerHighlight,
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(height: 14, width: 120, color: Colors.white),
+                      const SizedBox(height: 8),
+                      Container(height: 13, width: double.infinity, color: Colors.white),
+                      const SizedBox(height: 6),
+                      Container(height: 13, width: 180, color: Colors.white),
+                    ],
+                  ),
+                ),
+              )
             else if (selectedAddress != null)
               Container(
                 padding: const EdgeInsets.all(12),

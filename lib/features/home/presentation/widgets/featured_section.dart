@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:shimmer/shimmer.dart';
 import '../../../../core/constants/app_theme.dart';
 import '../../../../core/widgets/common_widgets.dart';
 import '../../../../models/models.dart';
@@ -82,49 +81,11 @@ class FeaturedSection extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 12),
       children: List.generate(3, (_) => Padding(
         padding: const EdgeInsets.symmetric(horizontal: 4),
-        child: _ShimmerCard(),
+        child: SizedBox(
+          width: 170,
+          child: ShimmerProductCard(),
+        ),
       )),
-    );
-  }
-}
-
-class _ShimmerCard extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Shimmer.fromColors(
-      baseColor: AppColors.shimmerBase,
-      highlightColor: AppColors.shimmerHighlight,
-      child: Container(
-        width: 170,
-        margin: const EdgeInsets.symmetric(horizontal: 4),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              height: 140,
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(10),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(height: 14, width: double.infinity, color: Colors.white),
-                  const SizedBox(height: 6),
-                  Container(height: 16, width: 80, color: Colors.white),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

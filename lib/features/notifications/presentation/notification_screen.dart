@@ -3,6 +3,7 @@ import '../../../core/constants/app_theme.dart';
 import '../../../core/widgets/common_widgets.dart';
 import '../../../models/social.dart';
 import 'package:provider/provider.dart';
+import 'package:shimmer/shimmer.dart';
 import '../data/notification_provider.dart';
 
 class NotificationScreen extends StatefulWidget {
@@ -48,7 +49,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
       body: Consumer<NotificationProvider>(
         builder: (context, provider, child) {
           if (provider.isLoading && provider.notifications.isEmpty) {
-            return const LoadingIndicator(message: 'Đang tải...');
+            return _buildNotificationShimmer();
           }
 
           if (provider.notifications.isEmpty) {
@@ -72,6 +73,16 @@ class _NotificationScreenState extends State<NotificationScreen> {
           );
         },
       ),
+    );
+  }
+
+  Widget _buildNotificationShimmer() {
+    return ListView(
+      children: List.generate(5, (_) => Shimmer.fromColors(
+        baseColor: AppColors.shimmerBase,
+        highlightColor: AppColors.shimmerHighlight,
+        child: const ShimmerListTile(leadingCircle: true),
+      )),
     );
   }
 

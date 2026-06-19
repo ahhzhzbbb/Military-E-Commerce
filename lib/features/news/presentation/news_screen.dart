@@ -5,6 +5,7 @@ import '../../../core/constants/api_constants.dart';
 import '../../../core/constants/app_theme.dart';
 import '../../../core/widgets/common_widgets.dart';
 import '../../../models/social.dart';
+import 'package:shimmer/shimmer.dart';
 
 class NewsScreen extends StatefulWidget {
   const NewsScreen({super.key});
@@ -62,7 +63,7 @@ class _NewsScreenState extends State<NewsScreen> {
         foregroundColor: Colors.white,
       ),
       body: _isLoading
-          ? const LoadingIndicator(message: 'Đang tải...')
+          ? _buildNewsShimmer()
           : _news.isEmpty
               ? EmptyState(
                   icon: Icons.newspaper,
@@ -80,6 +81,35 @@ class _NewsScreenState extends State<NewsScreen> {
                     itemBuilder: (context, index) => _buildNewsItem(_news[index]),
                   ),
                 ),
+    );
+  }
+
+  Widget _buildNewsShimmer() {
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: List.generate(4, (_) => Shimmer.fromColors(
+        baseColor: AppColors.shimmerBase,
+        highlightColor: AppColors.shimmerHighlight,
+        child: Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(height: 18, width: double.infinity, color: Colors.white),
+                const SizedBox(height: 6),
+                Container(height: 18, width: 200, color: Colors.white),
+                const SizedBox(height: 8),
+                Container(height: 12, width: 100, color: Colors.white),
+                const SizedBox(height: 8),
+                Container(height: 14, width: double.infinity, color: Colors.white),
+                const SizedBox(height: 4),
+                Container(height: 14, width: 180, color: Colors.white),
+              ],
+            ),
+          ),
+        ),
+      )),
     );
   }
 

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_theme.dart';
 import '../../../core/widgets/common_widgets.dart';
+import 'package:shimmer/shimmer.dart';
 import '../../../models/models.dart';
 import '../data/order_provider.dart';
 import 'order_detail_screen.dart';
@@ -55,7 +56,7 @@ class _OrderListScreenState extends State<OrderListScreen>
       body: Consumer<OrderProvider>(
         builder: (context, orderProvider, child) {
           if (orderProvider.isLoading) {
-            return const LoadingIndicator(message: 'Đang tải đơn hàng...');
+            return _buildOrderShimmer();
           }
 
           return TabBarView(
@@ -90,6 +91,42 @@ class _OrderListScreenState extends State<OrderListScreen>
           return _buildOrderCard(orders[index]);
         },
       ),
+    );
+  }
+
+  Widget _buildOrderShimmer() {
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: List.generate(3, (_) => Shimmer.fromColors(
+        baseColor: AppColors.shimmerBase,
+        highlightColor: AppColors.shimmerHighlight,
+        child: Card(
+          margin: const EdgeInsets.only(bottom: 12),
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Container(height: 14, width: 120, color: Colors.white),
+                    Container(height: 24, width: 80, decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(4))),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Row(children: [
+                  Container(width: 40, height: 40, decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(4))),
+                  const SizedBox(width: 8),
+                  Expanded(child: Container(height: 13, color: Colors.white)),
+                ]),
+                const SizedBox(height: 12),
+                Container(height: 14, width: 100, color: Colors.white),
+              ],
+            ),
+          ),
+        ),
+      )),
     );
   }
 

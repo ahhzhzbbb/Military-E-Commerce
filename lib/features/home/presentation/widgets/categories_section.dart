@@ -88,10 +88,7 @@ class CategoriesSection extends StatelessWidget {
         Consumer<ProductProvider>(
           builder: (context, provider, child) {
             if (provider.isLoading) {
-              return const SizedBox(
-                height: 100,
-                child: Center(child: CircularProgressIndicator(color: AppColors.primary)),
-              );
+              return const ShimmerCategoryChips();
             }
             return SizedBox(
               height: 110,

@@ -3,6 +3,7 @@ import '../../../core/constants/app_theme.dart';
 import '../../../core/widgets/common_widgets.dart';
 import '../../../models/user.dart';
 import 'package:provider/provider.dart';
+import 'package:shimmer/shimmer.dart';
 import '../data/follow_provider.dart';
 
 class FollowingScreen extends StatefulWidget {
@@ -91,7 +92,7 @@ class _FollowingScreenState extends State<FollowingScreen> with SingleTickerProv
         final users = selector(provider);
 
         if (provider.isLoading && users.isEmpty) {
-          return const LoadingIndicator(message: 'Đang tải...');
+          return _buildUserListShimmer();
         }
 
         if (users.isEmpty) {
@@ -121,6 +122,16 @@ class _FollowingScreenState extends State<FollowingScreen> with SingleTickerProv
           ),
         );
       },
+    );
+  }
+
+  Widget _buildUserListShimmer() {
+    return ListView(
+      children: List.generate(5, (_) => Shimmer.fromColors(
+        baseColor: AppColors.shimmerBase,
+        highlightColor: AppColors.shimmerHighlight,
+        child: const ShimmerListTile(),
+      )),
     );
   }
 

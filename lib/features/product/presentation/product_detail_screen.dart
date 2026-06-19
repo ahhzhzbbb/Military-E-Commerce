@@ -7,6 +7,7 @@ import '../../../core/widgets/common_widgets.dart';
 import '../../../models/models.dart';
 import '../../cart/data/cart_provider.dart';
 import '../../social/data/follow_provider.dart';
+import '../../social/presentation/user_profile_screen.dart';
 import 'controllers/product_detail_controller.dart';
 
 class ProductDetailScreen extends StatefulWidget {
@@ -369,7 +370,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     if (_controller.isLoading) {
       return const Scaffold(
         backgroundColor: AppColors.background,
-        body: LoadingIndicator(message: 'Đang tải thông tin sản phẩm...'),
+        body: ShimmerProductDetail(),
       );
     }
 
@@ -642,17 +643,26 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       child: Row(
         children: [
-          Container(
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(color: AppColors.primary.withValues(alpha: 0.3), width: 2),
-            ),
-            child: CircleAvatar(
-              radius: 24,
-              backgroundColor: AppColors.primaryLight.withValues(alpha: 0.12),
-              child: sellerAvatar != null && sellerAvatar.isNotEmpty
-                  ? ClipOval(child: CustomNetworkImage(imageUrl: sellerAvatar, width: 48, height: 48))
-                  : const Icon(Icons.store_outlined, color: AppColors.primary, size: 24),
+          GestureDetector(
+            onTap: sellerId.isNotEmpty ? () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => UserProfileScreen(userId: sellerId),
+                ),
+              );
+            } : null,
+            child: Container(
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: AppColors.primary.withValues(alpha: 0.3), width: 2),
+              ),
+              child: CircleAvatar(
+                radius: 24,
+                backgroundColor: AppColors.primaryLight.withValues(alpha: 0.12),
+                child: sellerAvatar != null && sellerAvatar.isNotEmpty
+                    ? ClipOval(child: CustomNetworkImage(imageUrl: sellerAvatar, width: 48, height: 48))
+                    : const Icon(Icons.store_outlined, color: AppColors.primary, size: 24),
+              ),
             ),
           ),
           const SizedBox(width: 12),

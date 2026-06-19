@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:shimmer/shimmer.dart';
 import '../../../../core/constants/app_theme.dart';
 import '../../../../core/widgets/common_widgets.dart';
 import '../../../../models/models.dart';
@@ -59,7 +58,7 @@ class AllProductsSection extends StatelessWidget {
         Consumer<ProductProvider>(
           builder: (context, provider, child) {
             if (provider.isLoading) {
-              return _buildShimmerGrid();
+              return const ShimmerProductGrid();
             }
             if (provider.products.isEmpty) {
               return const SizedBox(
@@ -90,62 +89,6 @@ class AllProductsSection extends StatelessWidget {
           },
         ),
       ],
-    );
-  }
-
-  Widget _buildShimmerGrid() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: GridView.count(
-        crossAxisCount: 2,
-        crossAxisSpacing: 12,
-        mainAxisSpacing: 12,
-        childAspectRatio: 0.58,
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        children: List.generate(4, (_) => _ShimmerCard()),
-      ),
-    );
-  }
-}
-
-class _ShimmerCard extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Shimmer.fromColors(
-        baseColor: AppColors.shimmerBase,
-        highlightColor: AppColors.shimmerHighlight,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              height: 180,
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(height: 14, width: double.infinity, color: Colors.white),
-                  const SizedBox(height: 6),
-                  Container(height: 14, width: 100, color: Colors.white),
-                  const SizedBox(height: 10),
-                  Container(height: 16, width: 80, color: Colors.white),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

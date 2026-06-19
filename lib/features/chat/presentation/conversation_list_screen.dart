@@ -6,6 +6,8 @@ import '../../auth/data/auth_provider.dart';
 import 'package:provider/provider.dart';
 import '../data/chat_provider.dart';
 
+import 'package:shimmer/shimmer.dart';
+
 class ConversationListScreen extends StatefulWidget {
   const ConversationListScreen({super.key});
 
@@ -33,7 +35,7 @@ class _ConversationListScreenState extends State<ConversationListScreen> {
       body: Consumer<ChatProvider>(
         builder: (context, chat, child) {
           if (chat.isLoading && chat.conversations.isEmpty) {
-            return const LoadingIndicator(message: 'Đang tải...');
+            return _buildConversationShimmer();
           }
 
           if (chat.conversations.isEmpty) {
@@ -57,6 +59,16 @@ class _ConversationListScreenState extends State<ConversationListScreen> {
           );
         },
       ),
+    );
+  }
+
+  Widget _buildConversationShimmer() {
+    return ListView(
+      children: List.generate(5, (_) => Shimmer.fromColors(
+        baseColor: AppColors.shimmerBase,
+        highlightColor: AppColors.shimmerHighlight,
+        child: const ShimmerListTile(),
+      )),
     );
   }
 
@@ -163,9 +175,18 @@ class _ConversationListScreenState extends State<ConversationListScreen> {
 }
 
 class ChatScreen extends StatefulWidget {
-  final Conversation conversation;
+  final Conversation? conversation;
+  final int? partnerId;
+  final String? partnerName;
+  final String? partnerAvatar;
 
-  const ChatScreen({super.key, required this.conversation});
+  const ChatScreen({
+    super.key,
+    this.conversation,
+    this.partnerId,
+    this.partnerName,
+    this.partnerAvatar,
+  });
 
   @override
   State<ChatScreen> createState() => _ChatScreenState();
@@ -175,14 +196,24 @@ class _ChatScreenState extends State<ChatScreen> {
   final _messageController = TextEditingController();
   final _scrollController = ScrollController();
 
+  int? get _effectivePartnerId =>
+      widget.partnerId ?? int.tryParse(widget.conversation?.partnerId ?? '');
+
+  String? get _effectivePartnerName =>
+      widget.partnerName ?? widget.conversation?.partnerName;
+
+  String? get _effectivePartnerAvatar =>
+      widget.partnerAvatar ?? widget.conversation?.partnerAvatar;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final chatProvider = context.read<ChatProvider>();
-      chatProvider.loadMessages(partnerId: int.tryParse(widget.conversation.partnerId ?? ''));
-      if (widget.conversation.partnerId != null) {
-        chatProvider.markAsRead(partnerId: int.parse(widget.conversation.partnerId!));
+      final pid = _effectivePartnerId;
+      if (pid != null) {
+        chatProvider.loadMessages(partnerId: pid);
+        chatProvider.markAsRead(partnerId: pid);
       }
     });
   }
@@ -199,7 +230,7 @@ class _ChatScreenState extends State<ChatScreen> {
     final content = _messageController.text.trim();
     if (content.isEmpty) return;
 
-    final partnerId = int.tryParse(widget.conversation.partnerId ?? '');
+    final partnerId = _effectivePartnerId;
     if (partnerId == null) return;
 
     _messageController.clear();
@@ -228,10 +259,10 @@ class _ChatScreenState extends State<ChatScreen> {
             CircleAvatar(
               radius: 16,
               backgroundColor: AppColors.primary.withValues(alpha: 0.1),
-              child: widget.conversation.partnerAvatar != null
+              child: _effectivePartnerAvatar != null
                   ? ClipOval(
                       child: CustomNetworkImage(
-                        imageUrl: widget.conversation.partnerAvatar,
+                        imageUrl: _effectivePartnerAvatar,
                         width: 32,
                         height: 32,
                       ),
@@ -239,7 +270,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   : const Icon(Icons.person, color: AppColors.primary, size: 16),
             ),
             const SizedBox(width: 8),
-            Text(widget.conversation.partnerName ?? 'Người dùng'),
+            Text(_effectivePartnerName ?? 'Người dùng'),
           ],
         ),
         backgroundColor: AppColors.primary,
@@ -247,17 +278,17 @@ class _ChatScreenState extends State<ChatScreen> {
       ),
       body: Column(
         children: [
-          if (widget.conversation.productTitle != null)
+          if (widget.conversation?.productTitle != null)
             Container(
               padding: const EdgeInsets.all(12),
               color: AppColors.primary.withValues(alpha: 0.05),
               child: Row(
                 children: [
-                  if (widget.conversation.productImage != null)
+                  if (widget.conversation?.productImage != null)
                     ClipRRect(
                       borderRadius: BorderRadius.circular(8),
                       child: CustomNetworkImage(
-                        imageUrl: widget.conversation.productImage,
+                        imageUrl: widget.conversation!.productImage,
                         width: 40,
                         height: 40,
                       ),
@@ -265,7 +296,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      widget.conversation.productTitle!,
+                      widget.conversation!.productTitle!,
                       style: const TextStyle(
                         fontWeight: FontWeight.w500,
                         fontSize: 13,
@@ -281,7 +312,7 @@ class _ChatScreenState extends State<ChatScreen> {
             child: Consumer<ChatProvider>(
               builder: (context, chat, child) {
                 if (chat.isLoading && chat.messages.isEmpty) {
-                  return const LoadingIndicator(message: 'Đang tải tin nhắn...');
+                  return _buildMessagesShimmer();
                 }
 
                 if (chat.messages.isEmpty) {
@@ -309,6 +340,31 @@ class _ChatScreenState extends State<ChatScreen> {
           _buildInputBar(),
         ],
       ),
+    );
+  }
+
+  Widget _buildMessagesShimmer() {
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: List.generate(6, (i) {
+        final isMine = i % 2 == 0;
+        return Align(
+          alignment: isMine ? Alignment.centerRight : Alignment.centerLeft,
+          child: Shimmer.fromColors(
+            baseColor: AppColors.shimmerBase,
+            highlightColor: AppColors.shimmerHighlight,
+            child: Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Container(height: 16, width: isMine ? 120.0 : 160.0, color: Colors.white),
+            ),
+          ),
+        );
+      }),
     );
   }
 
