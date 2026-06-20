@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:military_e_commerce/features/product/presentation/search_screen.dart';
+import 'package:military_e_commerce/features/social/presentation/user_profile_screen.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/constants/app_theme.dart';
 import '../../../../core/widgets/common_widgets.dart';
@@ -108,22 +109,34 @@ class HomeContent extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              CircleAvatar(
-                radius: 22,
-                backgroundColor: AppColors.primary.withValues(alpha: 0.1),
-                child: auth.user?.avatar != null
-                    ? ClipOval(
-                        child: CustomNetworkImage(
-                          imageUrl: auth.user!.avatar,
-                          width: 44,
-                          height: 44,
-                        ),
-                      )
-                    : const Icon(
-                        Icons.person,
-                        color: AppColors.primary,
-                        size: 24,
+              GestureDetector(
+                onTap: () {
+                  final userId = auth.user?.id;
+                  if (userId != null && userId.isNotEmpty) {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => UserProfileScreen(userId: userId),
                       ),
+                    );
+                  }
+                },
+                child: CircleAvatar(
+                  radius: 22,
+                  backgroundColor: AppColors.primary.withValues(alpha: 0.1),
+                  child: auth.user?.avatar != null
+                      ? ClipOval(
+                          child: CustomNetworkImage(
+                            imageUrl: auth.user!.avatar,
+                            width: 44,
+                            height: 44,
+                          ),
+                        )
+                      : const Icon(
+                          Icons.person,
+                          color: AppColors.primary,
+                          size: 24,
+                        ),
+                ),
               ),
             ],
           ),

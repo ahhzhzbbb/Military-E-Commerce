@@ -6,8 +6,11 @@ import '../../../core/constants/api_constants.dart';
 import '../../../core/constants/app_theme.dart';
 import '../../../core/widgets/common_widgets.dart';
 import '../../../models/user.dart';
+import '../../../models/product.dart';
 import 'package:military_e_commerce/features/chat/presentation/conversation_list_screen.dart';
 import '../../auth/data/auth_provider.dart';
+import '../../product/presentation/product_detail_screen.dart';
+import '../../profile/presentation/profile_edit_screen.dart';
 import '../../social/data/follow_provider.dart';
 
 class UserProfileScreen extends StatefulWidget {
@@ -24,6 +27,12 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   User? _user;
   bool _isLoading = true;
   String? _error;
+
+  List<Product> _products = [];
+  bool _isLoadingProducts = true;
+  int _productIndex = 0;
+  static const int _productCount = 20;
+  bool _hasMoreProducts = true;
 
   @override
   void initState() {
@@ -55,12 +64,58 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
       if (_user?.followed != null) {
         context.read<FollowProvider>().setFollowStatus(widget.userId, _user!.followed!);
       }
+      _loadProducts();
     } else {
       setState(() {
         _error = response.message;
         _isLoading = false;
       });
     }
+  }
+
+  Future<void> _loadProducts() async {
+    final userId = int.tryParse(widget.userId);
+    if (userId == null) {
+      setState(() => _isLoadingProducts = false);
+      return;
+    }
+
+    final response = await _apiClient.post(
+      ApiConstants.getUserListings,
+      body: {
+        'user_id': userId,
+        'index': _productIndex,
+        'count': _productCount,
+      },
+      requiresAuth: true,
+    );
+
+    if (!mounted) return;
+
+    if (response.isSuccess) {
+      final list = ApiData.asList(response.data, []);
+      final newProducts = list
+          .whereType<Map>()
+          .map((item) => Product.fromJson(Map<String, dynamic>.from(item)))
+          .toList();
+      setState(() {
+        if (_productIndex == 0) {
+          _products = newProducts;
+        } else {
+          _products.addAll(newProducts);
+        }
+        _hasMoreProducts = newProducts.length >= _productCount;
+        _isLoadingProducts = false;
+      });
+    } else {
+      setState(() => _isLoadingProducts = false);
+    }
+  }
+
+  void _loadMoreProducts() {
+    if (_isLoadingProducts || !_hasMoreProducts) return;
+    _productIndex++;
+    _loadProducts();
   }
 
   Future<void> _toggleFollow() async {
@@ -265,14 +320,44 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
         SliverToBoxAdapter(
           child: Column(
             children: [
-              if (!isOwnProfile) _buildActionRow(isFollowed),
+              if (isOwnProfile)
+                _buildOwnProfileActions()
+              else
+                _buildActionRow(isFollowed),
               _buildStatsRow(user),
               _buildInfoSection(user),
+              _buildProductsSection(),
               const SizedBox(height: 80),
             ],
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildOwnProfileActions() {
+    return Container(
+      color: Colors.white,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: SizedBox(
+        width: double.infinity,
+        height: 48,
+        child: OutlinedButton.icon(
+          onPressed: () async {
+            await Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const ProfileEditScreen()),
+            );
+            _loadUserProfile();
+          },
+          icon: const Icon(Icons.edit_outlined, size: 20),
+          label: const Text('Chỉnh sửa trang cá nhân'),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: AppColors.primary,
+            side: const BorderSide(color: AppColors.primary),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        ),
+      ),
     );
   }
 
@@ -427,6 +512,179 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
           SizedBox(width: 110, child: Text(label, style: const TextStyle(color: AppColors.textSecondary, fontSize: 14))),
           Expanded(child: Text(value, style: const TextStyle(fontWeight: FontWeight.w500, color: AppColors.textPrimary, fontSize: 14))),
         ],
+      ),
+    );
+  }
+
+  Widget _buildProductsSection() {
+    return Container(
+      color: Colors.white,
+      margin: const EdgeInsets.only(top: 8),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 4,
+                height: 20,
+                decoration: BoxDecoration(color: AppColors.primary, borderRadius: BorderRadius.circular(2)),
+              ),
+              const SizedBox(width: 10),
+              Text(
+                'Sản phẩm đang bán (${_products.length})',
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          if (_isLoadingProducts && _products.isEmpty)
+            const ShimmerProductGrid()
+          else if (_products.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 24),
+              child: Center(
+                child: Column(
+                  children: [
+                    Icon(Icons.store_outlined, size: 40, color: AppColors.textHint),
+                    const SizedBox(height: 8),
+                    const Text('Chưa có sản phẩm nào', style: TextStyle(color: AppColors.textSecondary, fontSize: 14)),
+                  ],
+                ),
+              ),
+            )
+          else
+            GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                crossAxisSpacing: 12,
+                mainAxisSpacing: 12,
+                childAspectRatio: 0.58,
+              ),
+              itemCount: _products.length + (_hasMoreProducts ? 1 : 0),
+              itemBuilder: (context, index) {
+                if (index == _products.length) {
+                  _loadMoreProducts();
+                  return const Center(child: SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2)));
+                }
+                return _buildListingProductCard(_products[index]);
+              },
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildListingProductCard(Product product) {
+    return GestureDetector(
+      onTap: () {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => ProductDetailScreen(productId: product.id),
+          ),
+        );
+      },
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.06),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              flex: 5,
+              child: Stack(
+                children: [
+                  Positioned.fill(
+                    child: CustomNetworkImage(
+                      imageUrl: product.images.isNotEmpty ? product.images.first : null,
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                  if (product.hasDiscount)
+                    Positioned(
+                      top: 8,
+                      right: 8,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: AppColors.error,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          '-${product.discountPercent.toStringAsFixed(0)}%',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    product.name,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                      height: 1.3,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      Icon(Icons.favorite, size: 12, color: AppColors.error.withValues(alpha: 0.6)),
+                      const SizedBox(width: 2),
+                      Text('${product.likeCount}', style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                      const SizedBox(width: 8),
+                      Icon(Icons.chat_bubble_outline, size: 12, color: AppColors.textHint),
+                      const SizedBox(width: 2),
+                      Text('${product.commentCount}', style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                      const Spacer(),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  PriceDisplay(
+                    price: product.effectivePrice,
+                    originalPrice: product.hasDiscount ? product.price : null,
+                    showDiscountPercent: false,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.primary,
+                    ),
+                    originalStyle: const TextStyle(
+                      fontSize: 11,
+                      color: AppColors.textHint,
+                      decoration: TextDecoration.lineThrough,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

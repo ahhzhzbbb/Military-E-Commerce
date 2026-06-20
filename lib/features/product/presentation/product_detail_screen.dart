@@ -881,12 +881,21 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          CircleAvatar(
-            radius: 18,
-            backgroundColor: AppColors.primary.withValues(alpha: 0.1),
-            child: rating.userAvatar != null
-                ? ClipOval(child: CustomNetworkImage(imageUrl: rating.userAvatar, width: 36, height: 36))
-                : const Icon(Icons.person, color: AppColors.primary, size: 18),
+          GestureDetector(
+            onTap: rating.userId != null ? () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => UserProfileScreen(userId: rating.userId!),
+                ),
+              );
+            } : null,
+            child: CircleAvatar(
+              radius: 18,
+              backgroundColor: AppColors.primary.withValues(alpha: 0.1),
+              child: rating.userAvatar != null
+                  ? ClipOval(child: CustomNetworkImage(imageUrl: rating.userAvatar, width: 36, height: 36))
+                  : const Icon(Icons.person, color: AppColors.primary, size: 18),
+            ),
           ),
           const SizedBox(width: 10),
           Expanded(
@@ -974,12 +983,21 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          CircleAvatar(
-            radius: 18,
-            backgroundColor: AppColors.primary.withValues(alpha: 0.1),
-            child: comment.userAvatar != null
-                ? ClipOval(child: CustomNetworkImage(imageUrl: comment.userAvatar, width: 36, height: 36))
-                : const Icon(Icons.person, color: AppColors.primary, size: 18),
+          GestureDetector(
+            onTap: comment.userId != null ? () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => UserProfileScreen(userId: comment.userId!),
+                ),
+              );
+            } : null,
+            child: CircleAvatar(
+              radius: 18,
+              backgroundColor: AppColors.primary.withValues(alpha: 0.1),
+              child: comment.userAvatar != null
+                  ? ClipOval(child: CustomNetworkImage(imageUrl: comment.userAvatar, width: 36, height: 36))
+                  : const Icon(Icons.person, color: AppColors.primary, size: 18),
+            ),
           ),
           const SizedBox(width: 10),
           Expanded(
