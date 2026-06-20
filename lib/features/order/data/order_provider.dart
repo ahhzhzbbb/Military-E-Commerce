@@ -178,7 +178,10 @@ class OrderProvider extends ChangeNotifier {
   Future<bool> cancelOrder(String orderId) async {
     final response = await _apiClient.post(
       ApiConstants.cancelOrder,
-      body: {'order_id': int.tryParse(orderId) ?? orderId},
+      body: {
+        'id': orderId, // Backend CancelOrderDto expects string 'id'
+        'reason': 'Người dùng hủy đơn', // Backend strictly requires 'reason' since it lacks @IsOptional()
+      },
       requiresAuth: true,
     );
 
@@ -219,7 +222,7 @@ class OrderProvider extends ChangeNotifier {
   Future<void> loadOrderTimeline(String orderId) async {
     final response = await _apiClient.post(
       ApiConstants.getOrderTimeline,
-      body: {'order_id': int.tryParse(orderId) ?? orderId},
+      body: {'purchase_id': orderId}, // Backend GetOrderTimelineDto expects string 'purchase_id'
       requiresAuth: true,
     );
 
@@ -258,7 +261,7 @@ class OrderProvider extends ChangeNotifier {
   Future<bool> buyerConfirmReceived(String orderId) async {
     final response = await _apiClient.post(
       ApiConstants.buyerConfirmReceived,
-      body: {'order_id': int.tryParse(orderId) ?? orderId},
+      body: {'purchase_id': orderId}, // Backend BuyerConfirmReceivedDto expects string 'purchase_id'
       requiresAuth: true,
     );
 
@@ -295,7 +298,7 @@ class OrderProvider extends ChangeNotifier {
 
   Future<bool> refundOrder(String orderId, {String? reason}) async {
     final body = <String, dynamic>{
-      'order_id': int.tryParse(orderId) ?? orderId,
+      'purchase_id': orderId, // Backend RefundOrderDto expects string 'purchase_id'
     };
     if (reason != null) {
       body['reason'] = reason;
