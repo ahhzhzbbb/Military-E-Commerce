@@ -12,14 +12,15 @@ class ChatProvider extends ChangeNotifier {
   Conversation? _currentConversation;
   bool _isLoading = false;
   String? _error;
+  int _numNewMessage = 0;
 
   List<Conversation> get conversations => _conversations;
   List<Message> get messages => _messages;
   Conversation? get currentConversation => _currentConversation;
   bool get isLoading => _isLoading;
   String? get error => _error;
-
-  int get unreadCount => _conversations.fold(0, (sum, c) => sum + (c.unreadCount ?? 0));
+  int get numNewMessage => _numNewMessage;
+  int get unreadCount => _numNewMessage;
 
   Future<void> loadConversations({int index = 0, int count = 20}) async {
     _isLoading = true;
@@ -33,10 +34,12 @@ class ChatProvider extends ChangeNotifier {
     );
 
     if (response.isSuccess) {
-      _conversations = ApiData.asList(response.data, ['conversations', 'items', 'list'])
+      final list = ApiData.asList(response.data, []);
+      _conversations = list
           .whereType<Map>()
           .map((item) => Conversation.fromJson(Map<String, dynamic>.from(item)))
           .toList();
+      _numNewMessage = _conversations.where((c) => c.lastMessageUnread == true).length;
     } else {
       _conversations = [];
       _error = '${response.message} (Code: ${response.code})';
@@ -51,6 +54,7 @@ class ChatProvider extends ChangeNotifier {
     int? conversationId,
     int index = 0,
     int count = 20,
+    String? currentUserId,
   }) async {
     _isLoading = true;
     _error = null;
@@ -59,9 +63,9 @@ class ChatProvider extends ChangeNotifier {
     final body = <String, dynamic>{
       'index': index,
       'count': count,
-      'partner_id': ?partnerId,
-      'conversation_id': ?conversationId,
     };
+    if (partnerId != null) body['partner_id'] = partnerId;
+    if (conversationId != null) body['conversation_id'] = conversationId;
 
     final response = await _apiClient.post(
       ApiConstants.getConversation,
@@ -70,9 +74,16 @@ class ChatProvider extends ChangeNotifier {
     );
 
     if (response.isSuccess) {
-      _messages = ApiData.asList(response.data, ['messages', 'items', 'list'])
+      final dataMap = ApiData.mapFrom(response.data, []);
+      final messagesList = ApiData.asList(dataMap, ['messages']);
+      _messages = messagesList
           .whereType<Map>()
-          .map((item) => Message.fromJson(Map<String, dynamic>.from(item)))
+          .map((item) => Message.fromJson(
+                Map<String, dynamic>.from(item),
+                currentUserId: currentUserId,
+              ))
+          .toList()
+          .reversed
           .toList();
     } else {
       _messages = [];
@@ -86,17 +97,40 @@ class ChatProvider extends ChangeNotifier {
   Future<bool> sendMessage({
     required int partnerId,
     required String content,
+    String typeMessage = 'text',
+    String? currentUserId,
   }) async {
     final response = await _apiClient.post(
       ApiConstants.sendMessage,
-      body: {'partner_id': partnerId, 'content': content},
+      body: {
+        'to_id': partnerId,
+        'message': content,
+        'type_message': typeMessage,
+      },
       requiresAuth: true,
     );
 
     if (response.isSuccess) {
       final data = response.getDataAsMap();
       if (data != null) {
-        final newMessage = Message.fromJson(data);
+        final createdAtRaw = data['created_at'];
+        DateTime? createdAt;
+        if (createdAtRaw is num) {
+          createdAt = DateTime.fromMillisecondsSinceEpoch(
+            (createdAtRaw.toInt()) * 1000,
+            isUtc: true,
+          );
+        }
+        final newMessage = Message(
+          id: data['message_id']?.toString() ?? '',
+          conversationId: data['conversation_id']?.toString() ?? '',
+          senderId: currentUserId ?? '',
+          content: content,
+          type: typeMessage,
+          unread: false,
+          createdAt: createdAt,
+          isMine: true,
+        );
         _messages.add(newMessage);
         notifyListeners();
       }

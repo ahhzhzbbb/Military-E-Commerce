@@ -1,0 +1,36 @@
+version: "3.8"
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: it4788_mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: "${DB_ROOT_PASSWORD}"
+      MYSQL_DATABASE: "${DB_NAME}"
+      MYSQL_USER: "${DB_USERNAME}"
+      MYSQL_PASSWORD: "${DB_PASSWORD}"
+    ports:
+      - "127.0.0.1:${DB_PORT}:3306"
+    volumes:
+      - ./mysql_data:/var/lib/mysql
+    restart: always
+
+  redis:
+    image: redis:latest
+    ports:
+      - "127.0.0.1:${REDIS_PORT}:6379"
+    volumes:
+      - ./redis-data:/data
+    restart: always
+
+  app:
+    build: .
+    container_name: it4788_app
+    ports:
+      - "${PORT}:${PORT}"
+    env_file: .env
+    volumes:
+      - .:/app
+      - /app/node_modules
+    command: npm run start:dev
+    restart: always

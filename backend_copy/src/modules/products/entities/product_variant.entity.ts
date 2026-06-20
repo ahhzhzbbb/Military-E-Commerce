@@ -1,0 +1,37 @@
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  ManyToOne,
+  JoinColumn,
+  DeleteDateColumn,
+} from 'typeorm';
+import { Product } from './product.entity';
+
+@Entity('product_variants')
+export class ProductVariant {
+  @PrimaryGeneratedColumn()
+  id: number;
+
+  @Column()
+  product_id: number;
+
+  @DeleteDateColumn({ nullable: true })
+  deleted_at: Date;
+
+  @Column({ nullable: true })
+  size: string;
+
+  @Column({ nullable: true })
+  color: string;
+
+  @Column('int', { nullable: true })
+  stock: number;
+
+  @Column('float', { nullable: true })
+  weight: number;
+
+  @ManyToOne(() => Product, (product) => product.variants)
+  @JoinColumn({ name: 'product_id' })
+  product: Product;
+}

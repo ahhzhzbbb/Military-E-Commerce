@@ -148,11 +148,10 @@ class Conversation {
   final String? partnerId;
   final String? partnerName;
   final String? partnerAvatar;
-  final String? productId;
-  final String? productTitle;
-  final String? productImage;
   final String? lastMessage;
-  final int? unreadCount;
+  final String? lastMessageType;
+  final bool? lastMessageUnread;
+  final int? lastMessageCreated;
   final DateTime? updatedAt;
 
   Conversation({
@@ -160,28 +159,31 @@ class Conversation {
     this.partnerId,
     this.partnerName,
     this.partnerAvatar,
-    this.productId,
-    this.productTitle,
-    this.productImage,
     this.lastMessage,
-    this.unreadCount,
+    this.lastMessageType,
+    this.lastMessageUnread,
+    this.lastMessageCreated,
     this.updatedAt,
   });
 
   factory Conversation.fromJson(Map<String, dynamic> json) {
+    final partner = json['partner'] is Map ? Map<String, dynamic>.from(json['partner'] as Map) : null;
+    final lastMsg = json['last_message'] is Map ? Map<String, dynamic>.from(json['last_message'] as Map) : null;
+
     return Conversation(
       id: json['id']?.toString() ?? '',
-      partnerId: json['partner_id']?.toString(),
-      partnerName: json['partner_name'] ?? json['username'],
-      partnerAvatar: json['partner_avatar'] ?? json['avatar'],
-      productId: json['product_id']?.toString(),
-      productTitle: json['product_title'],
-      productImage: json['product_image'],
-      lastMessage: json['last_message'],
-      unreadCount: toInt(json['unread_count']),
+      partnerId: partner?['id']?.toString() ?? json['partner_id']?.toString(),
+      partnerName: partner?['username']?.toString() ?? json['partner_name'] ?? json['username'],
+      partnerAvatar: partner?['avatar']?.toString() ?? json['partner_avatar'] ?? json['avatar'],
+      lastMessage: lastMsg?['message']?.toString() ?? json['last_message']?.toString(),
+      lastMessageType: lastMsg?['type']?.toString(),
+      lastMessageUnread: lastMsg?['unread'] != null ? toBool(lastMsg!['unread']) : null,
+      lastMessageCreated: toInt(lastMsg?['created'] ?? json['updated_at']),
       updatedAt: json['updated_at'] != null
           ? DateTime.tryParse(json['updated_at'].toString())
-          : null,
+          : (lastMsg?['created'] != null
+              ? DateTime.fromMillisecondsSinceEpoch((toInt(lastMsg!['created']) ?? 0) * 1000, isUtc: true)
+              : null),
     );
   }
 }
@@ -190,36 +192,46 @@ class Message {
   final String id;
   final String conversationId;
   final String senderId;
-  final String? receiverId;
+  final String? senderName;
   final String content;
-  final bool isRead;
+  final String type;
+  final bool unread;
   final DateTime? createdAt;
   final bool isMine;
 
   Message({
     required this.id,
-    required this.conversationId,
+    this.conversationId = '',
     required this.senderId,
-    this.receiverId,
+    this.senderName,
     required this.content,
-    this.isRead = false,
+    this.type = 'text',
+    this.unread = false,
     this.createdAt,
     this.isMine = false,
   });
 
   factory Message.fromJson(Map<String, dynamic> json, {String? currentUserId}) {
+    final sender = json['sender'] is Map ? Map<String, dynamic>.from(json['sender'] as Map) : null;
+    final senderId = sender?['id']?.toString() ?? json['sender_id']?.toString() ?? json['user_id']?.toString() ?? '';
+    final createdRaw = json['created'] ?? json['created_at'];
+    DateTime? created;
+    if (createdRaw is num) {
+      created = DateTime.fromMillisecondsSinceEpoch((createdRaw.toInt()) * 1000, isUtc: true);
+    } else if (createdRaw != null) {
+      created = DateTime.tryParse(createdRaw.toString());
+    }
+
     return Message(
-      id: json['id']?.toString() ?? '',
+      id: json['id']?.toString() ?? json['message_id']?.toString() ?? '',
       conversationId: json['conversation_id']?.toString() ?? '',
-      senderId: json['sender_id']?.toString() ?? json['user_id']?.toString() ?? '',
-      receiverId: json['receiver_id']?.toString(),
-      content: json['content'] ?? '',
-      isRead: toBool(json['is_read']),
-      createdAt: json['created_at'] != null
-          ? DateTime.tryParse(json['created_at'].toString())
-          : null,
-      isMine: currentUserId != null &&
-          json['sender_id']?.toString() == currentUserId,
+      senderId: senderId,
+      senderName: sender?['username']?.toString() ?? json['sender_name']?.toString(),
+      content: (json['message'] ?? json['content'] ?? '').toString(),
+      type: (json['type'] ?? json['type_message'] ?? 'text').toString(),
+      unread: toBool(json['unread']),
+      createdAt: created,
+      isMine: currentUserId != null && senderId == currentUserId,
     );
   }
 }

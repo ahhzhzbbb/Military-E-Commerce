@@ -89,7 +89,7 @@ class _ConversationListScreenState extends State<ConversationListScreen> {
                   )
                 : const Icon(Icons.person, color: AppColors.primary),
           ),
-          if (conversation.unreadCount != null && conversation.unreadCount! > 0)
+          if (conversation.lastMessageUnread == true)
             Positioned(
               right: 0,
               top: 0,
@@ -99,16 +99,7 @@ class _ConversationListScreenState extends State<ConversationListScreen> {
                   color: AppColors.error,
                   shape: BoxShape.circle,
                 ),
-                constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
-                child: Text(
-                  '${conversation.unreadCount}',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
+                constraints: const BoxConstraints(minWidth: 8, minHeight: 8),
               ),
             ),
         ],
@@ -117,29 +108,14 @@ class _ConversationListScreenState extends State<ConversationListScreen> {
         conversation.partnerName ?? 'Người dùng',
         style: const TextStyle(fontWeight: FontWeight.w600),
       ),
-      subtitle: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            conversation.lastMessage ?? '',
-            style: const TextStyle(
-              color: AppColors.textSecondary,
-              fontSize: 13,
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          if (conversation.productTitle != null)
-            Text(
-              'SP: ${conversation.productTitle}',
-              style: TextStyle(
-                color: AppColors.primary.withValues(alpha: 0.7),
-                fontSize: 12,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-        ],
+      subtitle: Text(
+        _lastMessageDisplay(conversation),
+        style: const TextStyle(
+          color: AppColors.textSecondary,
+          fontSize: 13,
+        ),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
       ),
       trailing: conversation.updatedAt != null
           ? Text(
@@ -171,6 +147,16 @@ class _ConversationListScreenState extends State<ConversationListScreen> {
       return '${diff.inDays} ngày trước';
     }
     return '${date.day}/${date.month}';
+  }
+
+  String _lastMessageDisplay(Conversation c) {
+    final msg = c.lastMessage ?? '';
+    final type = c.lastMessageType;
+    if (type == 'image') return '[Hình ảnh]';
+    if (type == 'video') return '[Video]';
+    if (type == 'file') return '[Tệp]';
+    if (type == 'product_id') return '[Sản phẩm]';
+    return msg;
   }
 }
 
@@ -210,9 +196,13 @@ class _ChatScreenState extends State<ChatScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final chatProvider = context.read<ChatProvider>();
+      final authProvider = context.read<AuthProvider>();
       final pid = _effectivePartnerId;
       if (pid != null) {
-        chatProvider.loadMessages(partnerId: pid);
+        chatProvider.loadMessages(
+          partnerId: pid,
+          currentUserId: authProvider.user?.id,
+        );
         chatProvider.markAsRead(partnerId: pid);
       }
     });
@@ -233,8 +223,13 @@ class _ChatScreenState extends State<ChatScreen> {
     final partnerId = _effectivePartnerId;
     if (partnerId == null) return;
 
+    final authProvider = context.read<AuthProvider>();
     _messageController.clear();
-    context.read<ChatProvider>().sendMessage(partnerId: partnerId, content: content);
+    context.read<ChatProvider>().sendMessage(
+      partnerId: partnerId,
+      content: content,
+      currentUserId: authProvider.user?.id,
+    );
 
     Future.delayed(const Duration(milliseconds: 100), () {
       if (_scrollController.hasClients) {
@@ -278,36 +273,6 @@ class _ChatScreenState extends State<ChatScreen> {
       ),
       body: Column(
         children: [
-          if (widget.conversation?.productTitle != null)
-            Container(
-              padding: const EdgeInsets.all(12),
-              color: AppColors.primary.withValues(alpha: 0.05),
-              child: Row(
-                children: [
-                  if (widget.conversation?.productImage != null)
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: CustomNetworkImage(
-                        imageUrl: widget.conversation!.productImage,
-                        width: 40,
-                        height: 40,
-                      ),
-                    ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      widget.conversation!.productTitle!,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w500,
-                        fontSize: 13,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
-              ),
-            ),
           Expanded(
             child: Consumer<ChatProvider>(
               builder: (context, chat, child) {
