@@ -6,6 +6,7 @@ import '../../../models/models.dart';
 import 'package:shimmer/shimmer.dart';
 import '../../cart/data/cart_provider.dart';
 import '../data/order_provider.dart';
+import 'address_management_screen.dart';
 
 class CheckoutScreen extends StatefulWidget {
   const CheckoutScreen({super.key});
@@ -59,7 +60,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     if (selectedAddress == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Vui lòng thêm địa chỉ giao hàng từ backend'),
+          content: Text('Vui lòng chọn hoặc thêm địa chỉ giao hàng'),
           backgroundColor: AppColors.error,
         ),
       );
@@ -262,25 +263,45 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 ),
               )
             else
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  border: Border.all(color: AppColors.divider),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.location_off, color: AppColors.textHint),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        orderProvider.error ??
-                            'Backend chưa trả về địa chỉ giao hàng',
-                        style: const TextStyle(color: AppColors.textSecondary),
-                      ),
+              Column(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: AppColors.divider),
+                      borderRadius: BorderRadius.circular(8),
                     ),
-                  ],
-                ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.location_off, color: AppColors.textHint),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            orderProvider.error ??
+                                'Chưa có địa chỉ giao hàng. Vui lòng thêm địa chỉ mới.',
+                            style: const TextStyle(color: AppColors.textSecondary),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: () async {
+                        await Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) => const AddressManagementScreen(),
+                          ),
+                        );
+                        if (mounted) _loadAddresses();
+                      },
+                      icon: const Icon(Icons.add_location_alt_outlined),
+                      label: const Text('Thêm địa chỉ mới'),
+                    ),
+                  ),
+                ],
               ),
           ],
         );
@@ -292,27 +313,93 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     final addresses = context.read<OrderProvider>().addresses;
     showModalBottomSheet(
       context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
       builder: (context) {
         return SafeArea(
-          child: ListView.separated(
-            shrinkWrap: true,
-            itemCount: addresses.length,
-            separatorBuilder: (_, _) => const Divider(height: 1),
-            itemBuilder: (context, index) {
-              final address = addresses[index];
-              return ListTile(
-                leading: const Icon(Icons.location_on_outlined),
-                title: Text(address.name),
-                subtitle: Text(address.displayAddress),
-                trailing: _selectedAddress?.id == address.id
-                    ? const Icon(Icons.check, color: AppColors.primary)
-                    : null,
-                onTap: () {
-                  setState(() => _selectedAddress = address);
-                  Navigator.of(context).pop();
-                },
-              );
-            },
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                child: Row(
+                  children: [
+                    const Text(
+                      'Chọn địa chỉ giao hàng',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    const Spacer(),
+                    IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: () => Navigator.of(context).pop(),
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(height: 1),
+              Flexible(
+                child: ListView.separated(
+                  shrinkWrap: true,
+                  itemCount: addresses.length,
+                  separatorBuilder: (_, _) => const Divider(height: 1),
+                  itemBuilder: (context, index) {
+                    final address = addresses[index];
+                    final isSelected = _selectedAddress?.id == address.id;
+                    return ListTile(
+                      leading: Icon(
+                        Icons.location_on,
+                        color: isSelected ? AppColors.primary : AppColors.textHint,
+                      ),
+                      title: Row(
+                        children: [
+                          Flexible(child: Text(address.name, style: const TextStyle(fontWeight: FontWeight.w600))),
+                          const SizedBox(width: 8),
+                          Text(address.phone, style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+                        ],
+                      ),
+                      subtitle: Text(
+                        address.displayAddress,
+                        style: const TextStyle(fontSize: 13),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      trailing: isSelected
+                          ? const Icon(Icons.check_circle, color: AppColors.primary)
+                          : null,
+                      onTap: () {
+                        setState(() => _selectedAddress = address);
+                        Navigator.of(context).pop();
+                      },
+                    );
+                  },
+                ),
+              ),
+              const Divider(height: 1),
+              Padding(
+                padding: const EdgeInsets.all(12),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: () async {
+                      Navigator.of(context).pop();
+                      await Navigator.of(this.context).push(
+                        MaterialPageRoute(
+                          builder: (context) => const AddressManagementScreen(),
+                        ),
+                      );
+                      if (mounted) _loadAddresses();
+                    },
+                    icon: const Icon(Icons.add_location_alt_outlined),
+                    label: const Text('Thêm địa chỉ mới'),
+                  ),
+                ),
+              ),
+            ],
           ),
         );
       },

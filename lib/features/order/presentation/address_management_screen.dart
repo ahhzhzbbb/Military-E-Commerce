@@ -243,7 +243,6 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
                   return;
                 }
 
-                Navigator.of(context).pop();
                 final orderProvider = this.context.read<OrderProvider>();
 
                 if (existing != null) {
@@ -253,13 +252,24 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
                     phone: phoneController.text.trim(),
                     address: addressController.text.trim(),
                     isDefault: isDefault,
-                  );                } else {
+                  );
+                } else {
                   await orderProvider.addAddress(
                     name: nameController.text.trim(),
                     phone: phoneController.text.trim(),
                     address: addressController.text.trim(),
                     isDefault: isDefault,
                   );
+                }
+
+                if (mounted) {
+                  if (orderProvider.error != null) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text(orderProvider.error!), backgroundColor: AppColors.error),
+                    );
+                  } else {
+                    Navigator.of(context).pop();
+                  }
                 }
               },
               child: const Text('Lưu'),

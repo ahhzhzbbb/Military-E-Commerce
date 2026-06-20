@@ -32,6 +32,8 @@ class OrderProvider extends ChangeNotifier {
   }
 
   List<OrderAddress> _parseAddresses(dynamic data) {
+    // The backend returns the address list directly as `data` (a List),
+    // or nested under known keys. ApiData.asList handles both cases.
     return ApiData.asList(data, ['addresses', 'items', 'list'])
         .whereType<Map>()
         .map((item) => OrderAddress.fromJson(Map<String, dynamic>.from(item)))
@@ -78,9 +80,9 @@ class OrderProvider extends ChangeNotifier {
     _error = null;
     notifyListeners();
 
-    final response = await _apiClient.post(
+    // Backend endpoint is GET /order/get_list_order_address
+    final response = await _apiClient.get(
       ApiConstants.getListOrderAddress,
-      body: <String, dynamic>{},
       requiresAuth: true,
     );
 
@@ -110,31 +112,46 @@ class OrderProvider extends ChangeNotifier {
     _error = null;
     notifyListeners();
 
-    Order? createdOrder;
+    // Backend expects a single request with all items grouped together.
+    // CreateOrderDto: { items: [{product_id, quantity}], address_id, order_source }
+    // order_source: 0 = from cart, 1 = direct buy
+    final orderItems = items
+        .map((item) => {
+              'product_id': _productIdParam(item.product.id.toString()),
+              'quantity': item.quantity,
+            })
+        .toList();
 
-    for (final item in items) {
-      final response = await _apiClient.post(
-        ApiConstants.createOrder,
-        body: {
-          'product_id': _productIdParam(item.product.id.toString()),
-          'quantity': item.quantity,
-          'address_id': shippingAddress.id,
-          'note': notes,
-        },
-        requiresAuth: true,
-      );
+    final addressId = int.tryParse(shippingAddress.id) ??
+        (shippingAddress.id.isNotEmpty ? shippingAddress.id : null);
 
-      if (!response.isSuccess) {
-        _error = '${response.message} (Code: ${response.code})';
-        _isLoading = false;
-        notifyListeners();
-        return null;
-      }
-
-      createdOrder ??= _parseOrder(response.data);
+    if (addressId == null) {
+      _error = 'Địa chỉ giao hàng không hợp lệ';
+      _isLoading = false;
+      notifyListeners();
+      return null;
     }
 
+    final response = await _apiClient.post(
+      ApiConstants.createOrder,
+      body: {
+        'items': orderItems,
+        'address_id': addressId,
+        'order_source': 0, // 0 = from cart
+      },
+      requiresAuth: true,
+    );
+
     _isLoading = false;
+
+    if (!response.isSuccess) {
+      _error = '${response.message} (Code: ${response.code})';
+      notifyListeners();
+      return null;
+    }
+
+    // Try to parse the order from the response data
+    final createdOrder = _parseOrder(response.data);
 
     if (createdOrder != null) {
       _currentOrder = createdOrder;
@@ -143,6 +160,7 @@ class OrderProvider extends ChangeNotifier {
       return createdOrder;
     }
 
+    // If parsing fails, reload orders and return the latest
     notifyListeners();
     await loadOrders();
     _currentOrder = _orders.isNotEmpty ? _orders.first : null;
@@ -160,7 +178,7 @@ class OrderProvider extends ChangeNotifier {
   Future<bool> cancelOrder(String orderId) async {
     final response = await _apiClient.post(
       ApiConstants.cancelOrder,
-      body: {'order_id': orderId},
+      body: {'order_id': int.tryParse(orderId) ?? orderId},
       requiresAuth: true,
     );
 
@@ -276,12 +294,16 @@ class OrderProvider extends ChangeNotifier {
   }
 
   Future<bool> refundOrder(String orderId, {String? reason}) async {
+    final body = <String, dynamic>{
+      'order_id': int.tryParse(orderId) ?? orderId,
+    };
+    if (reason != null) {
+      body['reason'] = reason;
+    }
+
     final response = await _apiClient.post(
       ApiConstants.refundOrder,
-      body: {
-        'order_id': int.tryParse(orderId) ?? orderId,
-        'reason': ?reason,
-      },
+      body: body,
       requiresAuth: true,
     );
 
@@ -316,11 +338,21 @@ class OrderProvider extends ChangeNotifier {
     return false;
   }
 
+  /// Add a new shipping address.
+  /// Backend expects: POST /order/add_order_address with body:
+  /// { address, is_default, address_id: [ward_id, province_id],
+  ///   lat, lng, receiver_name, phone, full_address, address_detail }
   Future<void> addAddress({
     required String name,
     required String phone,
     required String address,
     bool isDefault = false,
+    String? fullAddress,
+    String? addressDetail,
+    int wardId = 7,
+    int provinceId = 1,
+    double lat = 21.0285,
+    double lng = 105.8542,
   }) async {
     _isLoading = true;
     notifyListeners();
@@ -329,9 +361,14 @@ class OrderProvider extends ChangeNotifier {
       ApiConstants.addOrderAddress,
       body: {
         'receiver_name': name,
-        'receiver_phone': phone,
+        'phone': phone,
         'address': address,
+        'full_address': fullAddress ?? address,
+        'address_detail': addressDetail ?? address,
         'is_default': isDefault,
+        'address_id': [wardId, provinceId],
+        'lat': lat,
+        'lng': lng,
       },
       requiresAuth: true,
     );
@@ -345,23 +382,29 @@ class OrderProvider extends ChangeNotifier {
     }
   }
 
+  /// Update an existing address.
+  /// Backend expects: PATCH /order/update/:id
   Future<void> updateAddress({
     required String addressId,
     required String name,
     required String phone,
     required String address,
     bool isDefault = false,
+    String? fullAddress,
+    String? addressDetail,
   }) async {
     _isLoading = true;
     notifyListeners();
 
-    final response = await _apiClient.post(
-      ApiConstants.editOrderAddress,
+    final id = int.tryParse(addressId) ?? addressId;
+    final response = await _apiClient.patch(
+      '${ApiConstants.editOrderAddress}/$id',
       body: {
-        'id': int.tryParse(addressId) ?? addressId,
         'receiver_name': name,
-        'receiver_phone': phone,
+        'phone': phone,
         'address': address,
+        'full_address': fullAddress ?? address,
+        'address_detail': addressDetail ?? address,
         'is_default': isDefault,
       },
       requiresAuth: true,
@@ -376,13 +419,15 @@ class OrderProvider extends ChangeNotifier {
     }
   }
 
+  /// Delete an address.
+  /// Backend expects: DELETE /order/delete/:id
   Future<void> deleteAddress(String addressId) async {
     _isLoading = true;
     notifyListeners();
 
-    final response = await _apiClient.post(
-      ApiConstants.deleteOrderAddress,
-      body: {'id': int.tryParse(addressId) ?? addressId},
+    final id = int.tryParse(addressId) ?? addressId;
+    final response = await _apiClient.delete(
+      '${ApiConstants.deleteOrderAddress}/$id',
       requiresAuth: true,
     );
 
