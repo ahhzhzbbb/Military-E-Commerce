@@ -19,13 +19,26 @@ class AllProductsSection extends StatelessWidget {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'Tất cả sản phẩm',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary,
-                ),
+              Row(
+                children: [
+                  Container(
+                    width: 4,
+                    height: 20,
+                    decoration: BoxDecoration(
+                      color: AppColors.primary,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'Tất cả sản phẩm',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                ],
               ),
               Consumer<ProductProvider>(
                 builder: (context, provider, child) {
@@ -41,33 +54,36 @@ class AllProductsSection extends StatelessWidget {
             ],
           ),
         ),
+        const SizedBox(height: 12),
         Consumer<ProductProvider>(
           builder: (context, provider, child) {
             if (provider.isLoading) {
-              return const SizedBox(
-                height: 200,
-                child: Center(child: CircularProgressIndicator()),
-              );
+              return const ShimmerProductGrid();
             }
             if (provider.products.isEmpty) {
               return const SizedBox(
                 height: 200,
-                child: Center(child: Text('Không có sản phẩm nào')),
+                child: Center(
+                  child: Text(
+                    'Không có sản phẩm nào',
+                    style: TextStyle(color: AppColors.textSecondary),
+                  ),
+                ),
               );
             }
             return GridView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.symmetric(horizontal: 16),
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 4,
+                crossAxisCount: 2,
                 crossAxisSpacing: 12,
                 mainAxisSpacing: 12,
-                childAspectRatio: 1,
+                childAspectRatio: 0.58,
               ),
               itemCount: provider.products.length,
               itemBuilder: (context, index) {
-                return _ProductItem(product: provider.products[index]);
+                return _ProductCard(product: provider.products[index]);
               },
             );
           },
@@ -77,10 +93,10 @@ class AllProductsSection extends StatelessWidget {
   }
 }
 
-class _ProductItem extends StatelessWidget {
+class _ProductCard extends StatelessWidget {
   final Product product;
 
-  const _ProductItem({required this.product});
+  const _ProductCard({required this.product});
 
   @override
   Widget build(BuildContext context) {
@@ -92,54 +108,55 @@ class _ProductItem extends StatelessWidget {
           ),
         );
       },
-      child: Card(
-        elevation: 1,
-        clipBehavior: Clip.antiAlias,
-        shape: RoundedRectangleBorder(
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
           borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.06),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ),
+        clipBehavior: Clip.antiAlias,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
           children: [
-            Stack(
-              children: [
-                CustomNetworkImage(
-                  imageUrl: product.images.isNotEmpty
-                      ? product.images.first
-                      : 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSYfHBhwXN6fyapdWLc7iKc8r99gh0O2GzOSw&s',
-                  height: 150,
-                  width: double.infinity,
-                  borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(12),
+            Expanded(
+              flex: 5,
+              child: Stack(
+                children: [
+                  Positioned.fill(
+                    child: CustomNetworkImage(
+                      imageUrl: product.images.isNotEmpty ? product.images.first : null,
+                      fit: BoxFit.cover,
+                    ),
                   ),
-                ),
-                // if (product.hasDiscount)
-                //   Positioned(
-                //     top: 8,
-                //     left: 8,
-                //     child: Container(
-                //       padding: const EdgeInsets.symmetric(
-                //         horizontal: 6,
-                //         vertical: 3,
-                //       ),
-                //       decoration: BoxDecoration(
-                //         color: AppColors.error,
-                //         borderRadius: BorderRadius.circular(6),
-                //       ),
-                //       child: Text(
-                //         '-${product.discountPercentage.toStringAsFixed(0)}%',
-                //         style: const TextStyle(
-                //           color: Colors.white,
-                //           fontSize: 10,
-                //           fontWeight: FontWeight.bold,
-                //         ),
-                //       ),
-                //     ),
-                //   ),
-              ],
+                  if (product.hasDiscount)
+                    Positioned(
+                      top: 8,
+                      right: 8,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: AppColors.error,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          '-${product.discountPercent.toStringAsFixed(0)}%',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
             ),
-
             Padding(
               padding: const EdgeInsets.all(10),
               child: Column(
@@ -148,58 +165,42 @@ class _ProductItem extends StatelessWidget {
                   Text(
                     product.name,
                     style: const TextStyle(
-                      fontSize: 14,
+                      fontSize: 13,
                       fontWeight: FontWeight.w500,
                       height: 1.3,
                     ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
-
                   const SizedBox(height: 6),
-
                   Row(
                     children: [
-                      // if (product.ratingAverage != null) ...[
-                      //   const Icon(
-                      //     Icons.star,
-                      //     size: 14,
-                      //     color: Colors.amber,
-                      //   ),
-
-                      //   const SizedBox(width: 2),
-
-                      //   Text(
-                      //     product.ratingAverage!.toStringAsFixed(1),
-                      //     style: const TextStyle(fontSize: 12),
-                      //   ),
-
-                      //   const SizedBox(width: 8),
-                      // ],
-
-                      // Expanded(
-                      //   child: Text(
-                      //     'Đã bán ${product.soldCount ?? 0}',
-                      //     style: const TextStyle(
-                      //       fontSize: 11,
-                      //       color: AppColors.textSecondary,
-                      //     ),
-                      //     overflow: TextOverflow.ellipsis,
-                      //   ),
-                      // ),
+                      if (product.ratingCount != null && product.ratingCount! > 0) ...[
+                        const Icon(Icons.star, size: 13, color: Colors.amber),
+                        const SizedBox(width: 2),
+                        Text(
+                          '${product.ratingCount}',
+                          style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                        ),
+                        const SizedBox(width: 6),
+                      ],
+                      const Spacer(),
                     ],
                   ),
-
                   const SizedBox(height: 6),
-
                   PriceDisplay(
-                    price: product.price,
-                    originalPrice: product.price,
-                    // showDiscountPercent: product.hasDiscount,
+                    price: product.effectivePrice,
+                    originalPrice: product.hasDiscount ? product.price : null,
+                    showDiscountPercent: false,
                     style: const TextStyle(
-                      fontSize: 16,
+                      fontSize: 15,
                       fontWeight: FontWeight.bold,
                       color: AppColors.primary,
+                    ),
+                    originalStyle: const TextStyle(
+                      fontSize: 11,
+                      color: AppColors.textHint,
+                      decoration: TextDecoration.lineThrough,
                     ),
                   ),
                 ],
@@ -207,7 +208,7 @@ class _ProductItem extends StatelessWidget {
             ),
           ],
         ),
-      )
+      ),
     );
   }
 }

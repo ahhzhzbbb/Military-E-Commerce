@@ -1,38 +1,5 @@
 import 'product.dart';
-
-Map<String, dynamic>? _asMap(dynamic value) {
-  if (value is Map<String, dynamic>) return value;
-  if (value is Map) {
-    return value.map((key, value) => MapEntry(key.toString(), value));
-  }
-  return null;
-}
-
-String? _toStringValue(dynamic value) {
-  if (value == null) return null;
-  final text = value.toString();
-  return text.isEmpty ? null : text;
-}
-
-double? _toDouble(dynamic value) {
-  if (value == null) return null;
-  if (value is num) return value.toDouble();
-  return double.tryParse(value.toString());
-}
-
-int? _toInt(dynamic value) {
-  if (value == null) return null;
-  if (value is int) return value;
-  if (value is num) return value.toInt();
-  return int.tryParse(value.toString());
-}
-
-bool _toBool(dynamic value) {
-  if (value is bool) return value;
-  if (value is num) return value != 0;
-  final text = value?.toString().toLowerCase();
-  return text == 'true' || text == '1';
-}
+import 'package:military_e_commerce/core/utils/parse_utils.dart';
 
 class CartItem {
   final String id;
@@ -50,11 +17,11 @@ class CartItem {
   });
 
   factory CartItem.fromJson(Map<String, dynamic> json) {
-    final productMap = _asMap(json['product']) ?? {};
+    final productMap = asMap(json['product']) ?? {};
     return CartItem(
       id: json['id']?.toString() ?? '',
       product: Product.fromJson(productMap),
-      quantity: _toInt(json['quantity']) ?? 1,
+      quantity: toInt(json['quantity']) ?? 1,
       selectedSize: json['selected_size'],
       notes: json['notes'],
     );
@@ -70,7 +37,7 @@ class CartItem {
     };
   }
 
-  int get totalPrice => product.price * quantity;
+  double get totalPrice => product.price * quantity;
 
   CartItem copyWith({
     String? id,
@@ -101,6 +68,10 @@ class OrderAddress {
   final String? wardId;
   final String? wardName;
   final bool isDefault;
+  final String? fullAddress;
+  final String? addressDetail;
+  final double? lat;
+  final double? lng;
 
   OrderAddress({
     required this.id,
@@ -114,22 +85,29 @@ class OrderAddress {
     this.wardId,
     this.wardName,
     this.isDefault = false,
+    this.fullAddress,
+    this.addressDetail,
+    this.lat,
+    this.lng,
   });
 
   factory OrderAddress.fromJson(Map<String, dynamic> json) {
     return OrderAddress(
       id: json['id']?.toString() ?? json['address_id']?.toString() ?? '',
-      name: json['name'] ?? json['recipient_name'] ?? '',
-      phone: json['phone'] ?? json['recipient_phone'] ?? '',
-      address:
-          json['address'] ?? json['detail'] ?? json['shipping_address'] ?? '',
+      name: json['name'] ?? json['receiver_name'] ?? '',
+      phone: json['phone'] ?? json['receiver_phone'] ?? '',
+      address: json['address'] ?? json['detail'] ?? json['address_detail'] ?? '',
       provinceId: json['province_id']?.toString(),
       provinceName: json['province_name'] ?? json['province'],
       districtId: json['district_id']?.toString(),
       districtName: json['district_name'] ?? json['district'],
       wardId: json['ward_id']?.toString(),
       wardName: json['ward_name'] ?? json['ward'],
-      isDefault: _toBool(json['is_default']),
+      isDefault: toBool(json['is_default']),
+      fullAddress: json['full_address'],
+      addressDetail: json['address_detail'],
+      lat: toDouble(json['lat']),
+      lng: toDouble(json['lng']),
     );
   }
 
@@ -146,15 +124,20 @@ class OrderAddress {
       'ward_id': wardId,
       'ward_name': wardName,
       'is_default': isDefault,
+      'full_address': fullAddress,
+      'address_detail': addressDetail,
+      'lat': lat,
+      'lng': lng,
     };
   }
 
-  String get fullAddress {
+  String get displayAddress {
+    if (fullAddress != null && fullAddress!.isNotEmpty) return fullAddress!;
     final parts = <String>[];
+    if (address.isNotEmpty) parts.add(address);
     if (wardName != null) parts.add(wardName!);
     if (districtName != null) parts.add(districtName!);
     if (provinceName != null) parts.add(provinceName!);
-    parts.add(address);
     return parts.join(', ');
   }
 }
@@ -172,6 +155,7 @@ class Order {
   final String status;
   final String? statusName;
   final String? notes;
+  final String? cancelReason;
   final String? trackingNumber;
   final DateTime? createdAt;
   final DateTime? updatedAt;
@@ -190,6 +174,7 @@ class Order {
     this.status = 'pending',
     this.statusName,
     this.notes,
+    this.cancelReason,
     this.trackingNumber,
     this.createdAt,
     this.updatedAt,
@@ -213,27 +198,28 @@ class Order {
         : hasFlatProduct
         ? [OrderItem.fromJson(json)]
         : <OrderItem>[];
-    final shippingAddressMap = _asMap(json['shipping_address']);
-    final shippingAddressText = _toStringValue(json['shipping_address']);
-    final generatedAddress =
-        json['recipient_name'] != null ||
-            json['recipient_phone'] != null ||
-            shippingAddressText != null
-        ? OrderAddress.fromJson({
-            ...json,
-            'shipping_address': ?shippingAddressText,
-          })
-        : null;
+    final shippingAddressMap = asMap(json['shipping_address']);
+    final shippingAddressText = asString(json['shipping_address']);
+    OrderAddress? generatedAddress;
+    if (json['recipient_name'] != null ||
+        json['receiver_name'] != null ||
+        json['phone'] != null ||
+        shippingAddressText != null) {
+      final addr = <String, dynamic>{...json};
+      if (shippingAddressText != null) {
+        addr['shipping_address'] = shippingAddressText;
+      }
+      generatedAddress = OrderAddress.fromJson(addr);
+    }
     final subtotalFromItems = orderItems.fold<double>(
       0,
       (sum, item) => sum + item.totalPrice,
     );
-    final subtotal = _toDouble(json['subtotal']) ?? subtotalFromItems;
-    final shippingFee = _toDouble(json['shipping_fee']) ?? 0;
+    final subtotal = toDouble(json['subtotal']) ?? subtotalFromItems;
+    final shippingFee = toDouble(json['shipping_fee']) ?? 0;
 
     return Order(
-      id:
-          json['id']?.toString() ??
+      id: json['id']?.toString() ??
           json['order_id']?.toString() ??
           json['purchase_id']?.toString() ??
           '',
@@ -247,12 +233,14 @@ class Order {
       subtotal: subtotal,
       shippingFee: shippingFee,
       total:
-          _toDouble(json['total']) ??
-          _toDouble(json['total_amount']) ??
+          toDouble(json['total']) ??
+          toDouble(json['total_amount']) ??
+          toDouble(json['total_price']) ??
           subtotal + shippingFee,
       status: json['status'] ?? 'pending',
       statusName: json['status_name'] ?? json['status_label'],
       notes: json['notes'] ?? json['note'],
+      cancelReason: json['cancel_reason'] ?? json['refund_reason'],
       trackingNumber: json['tracking_number'],
       createdAt: json['created_at'] != null
           ? DateTime.tryParse(json['created_at'].toString())
@@ -308,7 +296,7 @@ class OrderItem {
   });
 
   factory OrderItem.fromJson(Map<String, dynamic> json) {
-    final productMap = _asMap(json['product']);
+    final productMap = asMap(json['product']);
     final product = productMap != null ? Product.fromJson(productMap) : null;
     final productImages = product?.images ?? [];
 
@@ -320,8 +308,8 @@ class OrderItem {
           json['product_image'] ??
           json['image'] ??
           (productImages.isNotEmpty ? productImages.first : null),
-      price: _toDouble(json['price']) ?? 0,
-      quantity: _toInt(json['quantity']) ?? 1,
+      price: toDouble(json['price']) ?? toDouble(json['total_price']) ?? 0,
+      quantity: toInt(json['quantity']) ?? 1,
       selectedSize: json['selected_size'],
     );
   }
@@ -361,9 +349,9 @@ class OrderTimeline {
       id: json['id']?.toString() ?? '',
       status: json['status'] ?? '',
       statusName: json['status_name'] ?? json['label'],
-      description: json['description'],
-      timestamp: json['timestamp'] != null
-          ? DateTime.tryParse(json['timestamp'].toString())
+      description: json['description'] ?? json['note'],
+      timestamp: json['timestamp'] != null || json['created_at'] != null
+          ? DateTime.tryParse((json['timestamp'] ?? json['created_at']).toString())
           : null,
     );
   }

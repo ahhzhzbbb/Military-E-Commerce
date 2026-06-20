@@ -197,4 +197,201 @@ class OrderProvider extends ChangeNotifier {
   List<Order> getOrdersByStatus(String status) {
     return _orders.where((o) => o.status == status).toList();
   }
+
+  Future<void> loadOrderTimeline(String orderId) async {
+    final response = await _apiClient.post(
+      ApiConstants.getOrderTimeline,
+      body: {'order_id': int.tryParse(orderId) ?? orderId},
+      requiresAuth: true,
+    );
+
+    if (response.isSuccess) {
+      final timelineList = ApiData.asList(response.data, ['timeline', 'items', 'list'])
+          .whereType<Map>()
+          .map((item) => OrderTimeline.fromJson(Map<String, dynamic>.from(item)))
+          .toList();
+
+      final index = _orders.indexWhere((o) => o.id == orderId);
+      if (index >= 0) {
+        _orders[index] = Order(
+          id: _orders[index].id,
+          buyerId: _orders[index].buyerId,
+          sellerId: _orders[index].sellerId,
+          sellerName: _orders[index].sellerName,
+          items: _orders[index].items,
+          shippingAddress: _orders[index].shippingAddress,
+          subtotal: _orders[index].subtotal,
+          shippingFee: _orders[index].shippingFee,
+          total: _orders[index].total,
+          status: _orders[index].status,
+          statusName: _orders[index].statusName,
+          notes: _orders[index].notes,
+          cancelReason: _orders[index].cancelReason,
+          trackingNumber: _orders[index].trackingNumber,
+          createdAt: _orders[index].createdAt,
+          updatedAt: _orders[index].updatedAt,
+          timeline: timelineList,
+        );
+        notifyListeners();
+      }
+    }
+  }
+
+  Future<bool> buyerConfirmReceived(String orderId) async {
+    final response = await _apiClient.post(
+      ApiConstants.buyerConfirmReceived,
+      body: {'order_id': int.tryParse(orderId) ?? orderId},
+      requiresAuth: true,
+    );
+
+    if (response.isSuccess) {
+      final index = _orders.indexWhere((o) => o.id == orderId);
+      if (index >= 0) {
+        _orders[index] = Order(
+          id: _orders[index].id,
+          buyerId: _orders[index].buyerId,
+          sellerId: _orders[index].sellerId,
+          sellerName: _orders[index].sellerName,
+          items: _orders[index].items,
+          shippingAddress: _orders[index].shippingAddress,
+          subtotal: _orders[index].subtotal,
+          shippingFee: _orders[index].shippingFee,
+          total: _orders[index].total,
+          status: 'delivered',
+          statusName: 'Đã giao hàng',
+          notes: _orders[index].notes,
+          cancelReason: _orders[index].cancelReason,
+          trackingNumber: _orders[index].trackingNumber,
+          createdAt: _orders[index].createdAt,
+          updatedAt: DateTime.now(),
+          timeline: _orders[index].timeline,
+        );
+        notifyListeners();
+      }
+      return true;
+    }
+    _error = '${response.message} (Code: ${response.code})';
+    notifyListeners();
+    return false;
+  }
+
+  Future<bool> refundOrder(String orderId, {String? reason}) async {
+    final response = await _apiClient.post(
+      ApiConstants.refundOrder,
+      body: {
+        'order_id': int.tryParse(orderId) ?? orderId,
+        'reason': ?reason,
+      },
+      requiresAuth: true,
+    );
+
+    if (response.isSuccess) {
+      final index = _orders.indexWhere((o) => o.id == orderId);
+      if (index >= 0) {
+        _orders[index] = Order(
+          id: _orders[index].id,
+          buyerId: _orders[index].buyerId,
+          sellerId: _orders[index].sellerId,
+          sellerName: _orders[index].sellerName,
+          items: _orders[index].items,
+          shippingAddress: _orders[index].shippingAddress,
+          subtotal: _orders[index].subtotal,
+          shippingFee: _orders[index].shippingFee,
+          total: _orders[index].total,
+          status: 'refunded',
+          statusName: 'Đã hoàn tiền',
+          notes: _orders[index].notes,
+          cancelReason: reason ?? _orders[index].cancelReason,
+          trackingNumber: _orders[index].trackingNumber,
+          createdAt: _orders[index].createdAt,
+          updatedAt: DateTime.now(),
+          timeline: _orders[index].timeline,
+        );
+        notifyListeners();
+      }
+      return true;
+    }
+    _error = '${response.message} (Code: ${response.code})';
+    notifyListeners();
+    return false;
+  }
+
+  Future<void> addAddress({
+    required String name,
+    required String phone,
+    required String address,
+    bool isDefault = false,
+  }) async {
+    _isLoading = true;
+    notifyListeners();
+
+    final response = await _apiClient.post(
+      ApiConstants.addOrderAddress,
+      body: {
+        'receiver_name': name,
+        'receiver_phone': phone,
+        'address': address,
+        'is_default': isDefault,
+      },
+      requiresAuth: true,
+    );
+
+    if (response.isSuccess) {
+      await loadAddresses();
+    } else {
+      _error = '${response.message} (Code: ${response.code})';
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> updateAddress({
+    required String addressId,
+    required String name,
+    required String phone,
+    required String address,
+    bool isDefault = false,
+  }) async {
+    _isLoading = true;
+    notifyListeners();
+
+    final response = await _apiClient.post(
+      ApiConstants.editOrderAddress,
+      body: {
+        'id': int.tryParse(addressId) ?? addressId,
+        'receiver_name': name,
+        'receiver_phone': phone,
+        'address': address,
+        'is_default': isDefault,
+      },
+      requiresAuth: true,
+    );
+
+    if (response.isSuccess) {
+      await loadAddresses();
+    } else {
+      _error = '${response.message} (Code: ${response.code})';
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> deleteAddress(String addressId) async {
+    _isLoading = true;
+    notifyListeners();
+
+    final response = await _apiClient.post(
+      ApiConstants.deleteOrderAddress,
+      body: {'id': int.tryParse(addressId) ?? addressId},
+      requiresAuth: true,
+    );
+
+    if (response.isSuccess) {
+      await loadAddresses();
+    } else {
+      _error = '${response.message} (Code: ${response.code})';
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
 }

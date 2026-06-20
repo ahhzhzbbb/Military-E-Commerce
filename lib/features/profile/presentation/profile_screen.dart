@@ -2,10 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:military_e_commerce/core/constants/app_theme.dart';
 import 'package:military_e_commerce/core/widgets/common_widgets.dart';
+import 'package:shimmer/shimmer.dart';
 import 'package:military_e_commerce/models/models.dart';
 import 'package:military_e_commerce/features/auth/data/auth_provider.dart';
 import 'package:military_e_commerce/features/order/presentation/order_list_screen.dart';
 import 'package:military_e_commerce/features/wallet/data/wallet_provider.dart';
+import 'package:military_e_commerce/features/order/presentation/address_management_screen.dart';
+import 'package:military_e_commerce/features/social/presentation/following_screen.dart';
+import 'package:military_e_commerce/features/notifications/presentation/notification_screen.dart';
+import 'package:military_e_commerce/features/news/presentation/news_screen.dart';
 import 'profile_edit_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -247,7 +252,29 @@ class _ProfileScreenState extends State<ProfileScreen> {
           Consumer<WalletProvider>(
             builder: (context, wallet, child) {
               if (wallet.isLoading) {
-                return const Center(child: CircularProgressIndicator());
+                return Shimmer.fromColors(
+                  baseColor: AppColors.shimmerBase,
+                  highlightColor: AppColors.shimmerHighlight,
+                  child: Column(
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Container(height: 12, width: 80, color: Colors.white),
+                          Container(height: 16, width: 100, color: Colors.white),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Container(height: 12, width: 80, color: Colors.white),
+                          Container(height: 16, width: 100, color: Colors.white),
+                        ],
+                      ),
+                    ],
+                  ),
+                );
               }
 
               final balance = wallet.balance;
@@ -387,7 +414,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
             icon: Icons.location_on_outlined,
             title: 'Địa chỉ giao hàng',
             subtitle: 'Quản lý địa chỉ nhận hàng',
-            onTap: () {},
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => const AddressManagementScreen(),
+                ),
+              );
+            },
           ),
           const Divider(height: 1),
           _buildMenuItem(
@@ -408,7 +441,39 @@ class _ProfileScreenState extends State<ProfileScreen> {
             icon: Icons.notifications_outlined,
             title: 'Thông báo',
             subtitle: 'Cài đặt thông báo',
-            onTap: () {},
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => const NotificationScreen(),
+                ),
+              );
+            },
+          ),
+          const Divider(height: 1),
+          _buildMenuItem(
+            icon: Icons.people_outline,
+            title: 'Theo dõi',
+            subtitle: 'Quản lý theo dõi & chặn',
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => const FollowingScreen(),
+                ),
+              );
+            },
+          ),
+          const Divider(height: 1),
+          _buildMenuItem(
+            icon: Icons.newspaper,
+            title: 'Tin tức',
+            subtitle: 'Cập nhật tin tức mới nhất',
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => const NewsScreen(),
+                ),
+              );
+            },
           ),
           const Divider(height: 1),
           _buildMenuItem(
@@ -534,7 +599,7 @@ class _WalletDetailScreenState extends State<WalletDetailScreen> {
       body: Consumer<WalletProvider>(
         builder: (context, wallet, child) {
           if (wallet.isLoading) {
-            return const LoadingIndicator(message: 'Đang tải...');
+            return _buildWalletShimmer();
           }
 
           return SingleChildScrollView(
@@ -694,5 +759,35 @@ class _WalletDetailScreenState extends State<WalletDetailScreen> {
 
   String _formatDate(DateTime date) {
     return '${date.day}/${date.month}/${date.year} ${date.hour}:${date.minute.toString().padLeft(2, '0')}';
+  }
+
+  Widget _buildWalletShimmer() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Shimmer.fromColors(
+        baseColor: AppColors.shimmerBase,
+        highlightColor: AppColors.shimmerHighlight,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: double.infinity,
+              height: 160,
+              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
+            ),
+            const SizedBox(height: 24),
+            Container(height: 18, width: 140, color: Colors.white),
+            const SizedBox(height: 12),
+            ...List.generate(5, (_) => Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Container(
+                height: 60,
+                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8)),
+              ),
+            )),
+          ],
+        ),
+      ),
+    );
   }
 }

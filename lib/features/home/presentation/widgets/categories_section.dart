@@ -8,41 +8,103 @@ import '../../data/product_provider.dart';
 class CategoriesSection extends StatelessWidget {
   const CategoriesSection({super.key});
 
+  static const _categoryIcons = {
+    'quần áo': Icons.checkroom,
+    'áo': Icons.checkroom,
+    'quần': Icons.checkroom,
+    'giày': Icons.hiking,
+    'dép': Icons.hiking,
+    'balo': Icons.backpack,
+    'túi': Icons.work,
+    'mũ': Icons.heat_pump,
+    'nón': Icons.heat_pump,
+    'điện thoại': Icons.phone_android,
+    'laptop': Icons.laptop,
+    'máy tính': Icons.computer,
+    'tablet': Icons.tablet,
+    'phụ kiện': Icons.headset,
+    'đồng hồ': Icons.watch,
+    'sách': Icons.menu_book,
+    'thực phẩm': Icons.restaurant,
+    'đồ ăn': Icons.fastfood,
+    'thức uống': Icons.local_cafe,
+    'cơm': Icons.rice_bowl,
+    'vũ khí': Icons.gavel,
+    'đồ chiến': Icons.shield,
+    'kỹ thuật': Icons.engineering,
+    'viễn thông': Icons.settings_input_antenna,
+    'y tế': Icons.medical_services,
+    'sức khỏe': Icons.favorite,
+    'thể thao': Icons.sports_soccer,
+    'nhà cửa': Icons.home,
+    'đồ gia dụng': Icons.kitchen,
+    'xe': Icons.directions_car,
+    'ô tô': Icons.directions_car,
+    'xe máy': Icons.two_wheeler,
+    'đồ chơi': Icons.toys,
+    'trẻ em': Icons.child_care,
+    'mỹ phẩm': Icons.face,
+    'làm đẹp': Icons.spa,
+  };
+
+  IconData _getIcon(String name) {
+    final lower = name.toLowerCase();
+    for (final entry in _categoryIcons.entries) {
+      if (lower.contains(entry.key)) return entry.value;
+    }
+    return Icons.category;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 16),
-          child: Text(
-            'Danh mục',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: AppColors.textPrimary,
-            ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Row(
+            children: [
+              Container(
+                width: 4,
+                height: 20,
+                decoration: BoxDecoration(
+                  color: AppColors.primary,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(width: 8),
+              const Text(
+                'Danh mục',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+            ],
           ),
         ),
         const SizedBox(height: 12),
-        SizedBox(
-          height: 100,
-          child: Consumer<ProductProvider>(
-            builder: (context, provider, child) {
-              if (provider.isLoading) {
-                return const Center(child: CircularProgressIndicator());
-              }
-              return ListView.builder(
+        Consumer<ProductProvider>(
+          builder: (context, provider, child) {
+            if (provider.isLoading) {
+              return const ShimmerCategoryChips();
+            }
+            return SizedBox(
+              height: 110,
+              child: ListView.builder(
                 scrollDirection: Axis.horizontal,
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 itemCount: provider.categories.length,
                 itemBuilder: (context, index) {
                   final category = provider.categories[index];
-                  return _CategoryItem(
+                  final isSelected = provider.selectedCategoryId == category.id;
+                  return _CategoryChip(
                     category: category,
-                    isSelected: provider.selectedCategoryId == category.id,
+                    isSelected: isSelected,
+                    icon: _getIcon(category.name),
                     onTap: () {
-                      if (provider.selectedCategoryId == category.id) {
+                      if (isSelected) {
                         provider.clearCategoryFilter();
                       } else {
                         provider.loadProducts(categoryId: category.id);
@@ -50,23 +112,25 @@ class CategoriesSection extends StatelessWidget {
                     },
                   );
                 },
-              );
-            },
-          ),
+              ),
+            );
+          },
         ),
       ],
     );
   }
 }
 
-class _CategoryItem extends StatelessWidget {
+class _CategoryChip extends StatelessWidget {
   final Category category;
   final bool isSelected;
+  final IconData icon;
   final VoidCallback onTap;
 
-  const _CategoryItem({
+  const _CategoryChip({
     required this.category,
     required this.isSelected,
+    required this.icon,
     required this.onTap,
   });
 
@@ -74,33 +138,50 @@ class _CategoryItem extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
-      child: Container(
-        width: 80,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        width: 76,
         margin: const EdgeInsets.symmetric(horizontal: 4),
         child: Column(
           children: [
-            Container(
-              width: 60,
-              height: 60,
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              width: 56,
+              height: 56,
               decoration: BoxDecoration(
-                color: isSelected
-                    ? AppColors.primary
-                    : AppColors.primary.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(12),
+                color: isSelected ? AppColors.primary : AppColors.primary.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: isSelected
+                    ? [
+                        BoxShadow(
+                          color: AppColors.primary.withValues(alpha: 0.3),
+                          blurRadius: 8,
+                          offset: const Offset(0, 3),
+                        ),
+                      ]
+                    : null,
               ),
-              child: CustomNetworkImage(
-                imageUrl: category.imageUrl ??
-                    'https://upload.wikimedia.org/wikipedia/en/8/8e/%C4%90%E1%BA%A1i_h%E1%BB%8Dc_B%C3%A1ch_khoa_H%C3%A0_N%E1%BB%99i_%28logo%29.png',
-                borderRadius: BorderRadius.circular(12),
-              ),
+              child: category.imageUrl != null && category.imageUrl!.isNotEmpty
+                  ? ClipRRect(
+                      borderRadius: BorderRadius.circular(16),
+                      child: CustomNetworkImage(
+                        imageUrl: category.imageUrl,
+                        fit: BoxFit.cover,
+                      ),
+                    )
+                  : Icon(
+                      icon,
+                      color: isSelected ? Colors.white : AppColors.primary,
+                      size: 26,
+                    ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 6),
             Text(
               category.name,
               style: TextStyle(
                 fontSize: 11,
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                color: isSelected ? AppColors.primary : AppColors.textPrimary,
+                color: isSelected ? AppColors.primary : AppColors.textSecondary,
               ),
               textAlign: TextAlign.center,
               maxLines: 2,

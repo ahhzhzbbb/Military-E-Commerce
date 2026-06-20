@@ -19,9 +19,10 @@ class _SearchScreenState extends State<SearchScreen> {
   final _searchController = TextEditingController();
   final _focusNode = FocusNode();
   List<Product> _searchResults = [];
-  final List<String> _recentSearches = [];
+  List<SavedSearch> _savedSearches = [];
   List<Category> _categories = [];
   bool _isSearching = false;
+  bool _isLoadingSaved = true;
   int? _selectedCategoryId;
   String? _error;
   int _requestId = 0;
@@ -30,6 +31,7 @@ class _SearchScreenState extends State<SearchScreen> {
   void initState() {
     super.initState();
     _loadCategories();
+    _loadSavedSearches();
   }
 
   @override
@@ -52,6 +54,72 @@ class _SearchScreenState extends State<SearchScreen> {
       });
     } else {
       setState(() => _error = response.message);
+    }
+  }
+
+  Future<void> _loadSavedSearches() async {
+    final response = await _apiClient.post(
+      ApiConstants.getListSavedSearch,
+      body: {'index': 0, 'count': 20},
+      requiresAuth: true,
+    );
+    if (!mounted) return;
+
+    if (response.isSuccess) {
+      setState(() {
+        _savedSearches = ApiData.asList(response.data, ['saved_searches', 'items', 'list'])
+            .whereType<Map>()
+            .map((item) => SavedSearch.fromJson(Map<String, dynamic>.from(item)))
+            .toList();
+        _isLoadingSaved = false;
+      });
+    } else {
+      setState(() => _isLoadingSaved = false);
+    }
+  }
+
+  Future<void> _deleteSavedSearch(SavedSearch search) async {
+    final messenger = ScaffoldMessenger.of(context);
+    setState(() {
+      _savedSearches.removeWhere((s) => s.id == search.id);
+    });
+
+    final response = await _apiClient.post(
+      ApiConstants.delSavedSearch,
+      body: {
+        if (search.id.isNotEmpty) 'search_id': int.tryParse(search.id) ?? 0,
+        if (search.keyword.isNotEmpty) 'keyword': search.keyword,
+      },
+      requiresAuth: true,
+    );
+
+    if (!response.isSuccess) {
+      if (mounted) {
+        messenger.showSnackBar(
+          const SnackBar(content: Text('Xóa thất bại'), backgroundColor: AppColors.error),
+        );
+        _loadSavedSearches();
+      }
+    }
+  }
+
+  Future<void> _deleteAllSavedSearches() async {
+    final messenger = ScaffoldMessenger.of(context);
+    setState(() => _savedSearches.clear());
+
+    final response = await _apiClient.post(
+      ApiConstants.delSavedSearch,
+      body: {'search_id': 0},
+      requiresAuth: true,
+    );
+
+    if (!response.isSuccess) {
+      if (mounted) {
+        messenger.showSnackBar(
+          const SnackBar(content: Text('Xóa thất bại'), backgroundColor: AppColors.error),
+        );
+        _loadSavedSearches();
+      }
     }
   }
 
@@ -100,6 +168,7 @@ class _SearchScreenState extends State<SearchScreen> {
           if (_selectedCategoryId != null)
             'category_id': _categoryParam(_selectedCategoryId!),
         },
+        requiresAuth: true,
       );
 
       if (!mounted || currentRequestId != _requestId) return;
@@ -110,12 +179,8 @@ class _SearchScreenState extends State<SearchScreen> {
 
       setState(() {
         _searchResults = _parseProducts(response.data);
-        if (trimmedQuery.isNotEmpty &&
-            !_recentSearches.contains(trimmedQuery)) {
-          _recentSearches.insert(0, trimmedQuery);
-          if (_recentSearches.length > 10) _recentSearches.removeLast();
-        }
       });
+      _loadSavedSearches();
     } catch (e) {
       if (!mounted || currentRequestId != _requestId) return;
       setState(() {
@@ -195,7 +260,7 @@ class _SearchScreenState extends State<SearchScreen> {
 
   Widget _buildBody() {
     if (_isSearching) {
-      return const Center(child: CircularProgressIndicator());
+      return const ShimmerProductGrid();
     }
 
     if (_searchResults.isNotEmpty) {
@@ -231,7 +296,7 @@ class _SearchScreenState extends State<SearchScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (_recentSearches.isNotEmpty) ...[
+          if (_savedSearches.isNotEmpty) ...[
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -244,11 +309,7 @@ class _SearchScreenState extends State<SearchScreen> {
                   ),
                 ),
                 TextButton(
-                  onPressed: () {
-                    setState(() {
-                      _recentSearches.clear();
-                    });
-                  },
+                  onPressed: _deleteAllSavedSearches,
                   child: const Text('Xóa tất cả'),
                 ),
               ],
@@ -257,25 +318,29 @@ class _SearchScreenState extends State<SearchScreen> {
             Wrap(
               spacing: 8,
               runSpacing: 8,
-              children: _recentSearches.map((search) {
+              children: _savedSearches.map((search) {
                 return GestureDetector(
                   onTap: () {
-                    _searchController.text = search;
-                    _performSearch(search);
+                    _searchController.text = search.keyword;
+                    _performSearch(search.keyword);
                   },
                   child: Chip(
-                    label: Text(search),
+                    label: Text(search.keyword),
                     deleteIcon: const Icon(Icons.close, size: 16),
-                    onDeleted: () {
-                      setState(() {
-                        _recentSearches.remove(search);
-                      });
-                    },
+                    onDeleted: () => _deleteSavedSearch(search),
                   ),
                 );
               }).toList(),
             ),
             const SizedBox(height: 24),
+          ] else if (!_isLoadingSaved) ...[
+            Padding(
+              padding: const EdgeInsets.only(bottom: 16),
+              child: Text(
+                'Chưa có tìm kiếm gần đây',
+                style: TextStyle(color: AppColors.textHint, fontSize: 13),
+              ),
+            ),
           ],
           const Text(
             'Danh mục sản phẩm',
@@ -411,9 +476,9 @@ class _SearchScreenState extends State<SearchScreen> {
                     ),
                     const Spacer(),
                     PriceDisplay(
-                      price: product.price,
-                      originalPrice: product.price,
-                      // showDiscountPercent: product.hasDiscount,
+                      price: product.effectivePrice,
+                      originalPrice: product.hasDiscount ? product.price : null,
+                      showDiscountPercent: product.hasDiscount,
                       style: const TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.bold,

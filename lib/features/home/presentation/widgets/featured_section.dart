@@ -19,13 +19,26 @@ class FeaturedSection extends StatelessWidget {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'Sản phẩm nổi bật',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary,
-                ),
+              Row(
+                children: [
+                  Container(
+                    width: 4,
+                    height: 20,
+                    decoration: BoxDecoration(
+                      color: AppColors.accent,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'Sản phẩm nổi bật',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                ],
               ),
               TextButton(
                 onPressed: () {},
@@ -34,19 +47,23 @@ class FeaturedSection extends StatelessWidget {
             ],
           ),
         ),
+        const SizedBox(height: 12),
         SizedBox(
-          height: 220,
+          height: 240,
           child: Consumer<ProductProvider>(
             builder: (context, provider, child) {
               if (provider.isLoading) {
-                return const Center(child: CircularProgressIndicator());
+                return _buildShimmerList();
+              }
+              if (provider.featuredProducts.isEmpty) {
+                return const SizedBox.shrink();
               }
               return ListView.builder(
                 scrollDirection: Axis.horizontal,
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 itemCount: provider.featuredProducts.length,
                 itemBuilder: (context, index) {
-                  return _FeaturedProductItem(
+                  return _FeaturedProductCard(
                     product: provider.featuredProducts[index],
                   );
                 },
@@ -57,12 +74,26 @@ class FeaturedSection extends StatelessWidget {
       ],
     );
   }
+
+  Widget _buildShimmerList() {
+    return ListView(
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      children: List.generate(3, (_) => Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+        child: SizedBox(
+          width: 170,
+          child: ShimmerProductCard(),
+        ),
+      )),
+    );
+  }
 }
 
-class _FeaturedProductItem extends StatelessWidget {
+class _FeaturedProductCard extends StatelessWidget {
   final Product product;
 
-  const _FeaturedProductItem({required this.product});
+  const _FeaturedProductCard({required this.product});
 
   @override
   Widget build(BuildContext context) {
@@ -75,46 +106,90 @@ class _FeaturedProductItem extends StatelessWidget {
         );
       },
       child: Container(
-        width: 160,
+        width: 170,
         margin: const EdgeInsets.symmetric(horizontal: 4),
-        child: Card(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              CustomNetworkImage(
-                imageUrl: product.images.isNotEmpty
-                    ? product.images.first
-                    : 'https://upload.wikimedia.org/wikipedia/en/8/8e/%C4%90%E1%BA%A1i_h%E1%BB%8Dc_B%C3%A1ch_khoa_H%C3%A0_N%E1%BB%99i_%28logo%29.png',
-                height: 120,
-                width: double.infinity,
-                borderRadius:
-                    const BorderRadius.vertical(top: Radius.circular(12)),
-              ),
-              Padding(
-                padding: const EdgeInsets.all(8),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      product.name,
-                      style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.06),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Stack(
+                children: [
+                  Positioned.fill(
+                    child: CustomNetworkImage(
+                      imageUrl: product.images.isNotEmpty ? product.images.first : null,
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                  if (product.hasDiscount)
+                    Positioned(
+                      top: 8,
+                      right: 8,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: AppColors.error,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          '-${product.discountPercent}%',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 4),
-                    PriceDisplay(
-                      price: product.price,
-                      originalPrice: product.price,
-                      // showDiscountPercent: product.hasDiscount,
-                    ),
-                  ],
-                ),
+                ],
               ),
-            ],
-          ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    product.name,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                      height: 1.3,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 6),
+                  PriceDisplay(
+                    price: product.effectivePrice,
+                    originalPrice: product.hasDiscount ? product.price : null,
+                    showDiscountPercent: false,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.primary,
+                    ),
+                    originalStyle: const TextStyle(
+                      fontSize: 11,
+                      color: AppColors.textHint,
+                      decoration: TextDecoration.lineThrough,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );

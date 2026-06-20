@@ -8,9 +8,11 @@ class ProductDetailController {
 
   Product? product;
   List<Comment> comments = [];
+  List<Rating> ratings = [];
   bool isLoading = true;
   String? error;
   bool isLiked = false;
+  double averageRating = 0;
 
   dynamic productIdParam(String productId) {
     return int.tryParse(productId) ?? productId;
@@ -29,6 +31,13 @@ class ProductDetailController {
     return ApiData.asList(data, ['comments', 'items', 'list'])
         .whereType<Map>()
         .map((item) => Comment.fromJson(Map<String, dynamic>.from(item)))
+        .toList();
+  }
+
+  List<Rating> parseRatings(dynamic data) {
+    return ApiData.asList(data, ['rates', 'ratings', 'items', 'list'])
+        .whereType<Map>()
+        .map((item) => Rating.fromJson(Map<String, dynamic>.from(item)))
         .toList();
   }
 
@@ -51,17 +60,30 @@ class ProductDetailController {
 
       final commentsResponse = await apiClient.post(
         ApiConstants.getCommentsProduct,
-        body: {'product_id': productIdParam(productId), 'index': 0, 'count': 20},
+        body: {'product_id': productIdParam(productId), 'index': 0, 'count': 50},
+        requiresAuth: true,
+      );
+
+      final ratingsResponse = await apiClient.post(
+        ApiConstants.getRates,
+        body: {'product_id': productIdParam(productId), 'index': 0, 'count': 50},
         requiresAuth: true,
       );
 
       product = parseProduct(productResponse.data);
       comments =
           commentsResponse.isSuccess ? parseComments(commentsResponse.data) : [];
-          isLiked = product?.isLiked ?? false;
+      ratings =
+          ratingsResponse.isSuccess ? parseRatings(ratingsResponse.data) : [];
+      isLiked = product?.isLiked ?? false;
+      if (ratings.isNotEmpty) {
+        averageRating =
+            ratings.fold(0.0, (sum, r) => sum + r.stars) / ratings.length;
+      }
     } catch (e) {
       product = null;
       comments = [];
+      ratings = [];
       error = e.toString();
     } finally {
       isLoading = false;
