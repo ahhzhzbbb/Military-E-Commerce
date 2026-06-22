@@ -237,8 +237,8 @@ class Order {
           toDouble(json['total_amount']) ??
           toDouble(json['total_price']) ??
           subtotal + shippingFee,
-      status: json['status'] ?? 'pending',
-      statusName: json['status_name'] ?? json['status_label'],
+      status: json['status'] ?? json['state'] ?? 'pending',
+      statusName: json['status_name'] ?? json['status_label'] ?? json['state'],
       notes: json['notes'] ?? json['note'],
       cancelReason: json['cancel_reason'] ?? json['refund_reason'],
       trackingNumber: json['tracking_number'],
