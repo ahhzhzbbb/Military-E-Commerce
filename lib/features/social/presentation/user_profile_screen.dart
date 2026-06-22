@@ -189,149 +189,155 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     final currentUser = context.read<AuthProvider>().user;
     final isOwnProfile = currentUser?.id == widget.userId;
 
-    return CustomScrollView(
-      slivers: [
-        SliverAppBar(
-          expandedHeight: 220,
-          pinned: true,
-          backgroundColor: AppColors.primary,
-          leading: Container(
-            margin: const EdgeInsets.only(left: 8, top: 8),
-            child: CircleAvatar(
-              backgroundColor: Colors.black.withValues(alpha: 0.3),
-              child: IconButton(
-                icon: const Icon(Icons.arrow_back, color: Colors.white, size: 20),
-                onPressed: () => Navigator.of(context).pop(),
-                padding: EdgeInsets.zero,
+    return RefreshIndicator(
+      onRefresh: () async {
+        _productIndex = 0;
+        await _loadUserProfile();
+      },
+      child: CustomScrollView(
+        slivers: [
+          SliverAppBar(
+            expandedHeight: 220,
+            pinned: true,
+            backgroundColor: AppColors.primary,
+            leading: Container(
+              margin: const EdgeInsets.only(left: 8, top: 8),
+              child: CircleAvatar(
+                backgroundColor: Colors.black.withValues(alpha: 0.3),
+                child: IconButton(
+                  icon: const Icon(Icons.arrow_back, color: Colors.white, size: 20),
+                  onPressed: () => Navigator.of(context).pop(),
+                  padding: EdgeInsets.zero,
+                ),
               ),
             ),
-          ),
-          actions: [
-            if (!isOwnProfile)
-              PopupMenuButton<String>(
-                icon: Container(
-                  margin: const EdgeInsets.only(right: 8, top: 8),
-                  child: CircleAvatar(
-                    backgroundColor: Colors.black.withValues(alpha: 0.3),
-                    child: const Icon(Icons.more_vert, color: Colors.white, size: 20),
+            actions: [
+              if (!isOwnProfile)
+                PopupMenuButton<String>(
+                  icon: Container(
+                    margin: const EdgeInsets.only(right: 8, top: 8),
+                    child: CircleAvatar(
+                      backgroundColor: Colors.black.withValues(alpha: 0.3),
+                      child: const Icon(Icons.more_vert, color: Colors.white, size: 20),
+                    ),
                   ),
+                  onSelected: (value) {
+                    if (value == 'block') _toggleBlock();
+                  },
+                  itemBuilder: (context) => [
+                    PopupMenuItem(
+                      value: 'block',
+                      child: Row(
+                        children: [
+                          Icon(isBlocked ? Icons.lock_open_outlined : Icons.block, color: isBlocked ? AppColors.success : AppColors.error, size: 20),
+                          const SizedBox(width: 8),
+                          Text(isBlocked ? 'Bỏ chặn' : 'Chặn người dùng', style: TextStyle(color: isBlocked ? AppColors.success : AppColors.error)),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
-                onSelected: (value) {
-                  if (value == 'block') _toggleBlock();
-                },
-                itemBuilder: (context) => [
-                  PopupMenuItem(
-                    value: 'block',
+            ],
+            flexibleSpace: FlexibleSpaceBar(
+              background: Stack(
+                fit: StackFit.expand,
+                children: [
+                  if (user.coverImage != null && user.coverImage!.isNotEmpty)
+                    CustomNetworkImage(imageUrl: user.coverImage, fit: BoxFit.cover)
+                  else
+                    Container(
+                      decoration: const BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [AppColors.primary, AppColors.primaryLight],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                      ),
+                    ),
+                  Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [Colors.transparent, Colors.black.withValues(alpha: 0.6)],
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    bottom: 16,
+                    left: 20,
                     child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
-                        Icon(isBlocked ? Icons.lock_open_outlined : Icons.block, color: isBlocked ? AppColors.success : AppColors.error, size: 20),
-                        const SizedBox(width: 8),
-                        Text(isBlocked ? 'Bỏ chặn' : 'Chặn người dùng', style: TextStyle(color: isBlocked ? AppColors.success : AppColors.error)),
+                        Container(
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 3),
+                          ),
+                          child: CircleAvatar(
+                            radius: 40,
+                            backgroundColor: AppColors.primaryLight,
+                            child: user.avatar != null && user.avatar!.isNotEmpty
+                                ? ClipOval(child: CustomNetworkImage(imageUrl: user.avatar, width: 80, height: 80))
+                                : const Icon(Icons.person, size: 40, color: Colors.white),
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              user.displayName,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 22,
+                                fontWeight: FontWeight.w800,
+                                shadows: [Shadow(color: Colors.black54, blurRadius: 4)],
+                              ),
+                            ),
+                            if (user.status != null && user.status!.isNotEmpty)
+                              Container(
+                                margin: const EdgeInsets.only(top: 4),
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: AppColors.success.withValues(alpha: 0.2),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Container(width: 6, height: 6, decoration: const BoxDecoration(color: AppColors.success, shape: BoxShape.circle)),
+                                    const SizedBox(width: 4),
+                                    Text(user.status!, style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600)),
+                                  ],
+                                ),
+                              ),
+                          ],
+                        ),
                       ],
                     ),
                   ),
                 ],
               ),
-          ],
-          flexibleSpace: FlexibleSpaceBar(
-            background: Stack(
-              fit: StackFit.expand,
+            ),
+          ),
+          SliverToBoxAdapter(
+            child: Column(
               children: [
-                if (user.coverImage != null && user.coverImage!.isNotEmpty)
-                  CustomNetworkImage(imageUrl: user.coverImage, fit: BoxFit.cover)
+                if (isOwnProfile)
+                  _buildOwnProfileActions()
                 else
-                  Container(
-                    decoration: const BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [AppColors.primary, AppColors.primaryLight],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                    ),
-                  ),
-                Container(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [Colors.transparent, Colors.black.withValues(alpha: 0.6)],
-                    ),
-                  ),
-                ),
-                Positioned(
-                  bottom: 16,
-                  left: 20,
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Container(
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: 3),
-                        ),
-                        child: CircleAvatar(
-                          radius: 40,
-                          backgroundColor: AppColors.primaryLight,
-                          child: user.avatar != null && user.avatar!.isNotEmpty
-                              ? ClipOval(child: CustomNetworkImage(imageUrl: user.avatar, width: 80, height: 80))
-                              : const Icon(Icons.person, size: 40, color: Colors.white),
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            user.displayName,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 22,
-                              fontWeight: FontWeight.w800,
-                              shadows: [Shadow(color: Colors.black54, blurRadius: 4)],
-                            ),
-                          ),
-                          if (user.status != null && user.status!.isNotEmpty)
-                            Container(
-                              margin: const EdgeInsets.only(top: 4),
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: AppColors.success.withValues(alpha: 0.2),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Container(width: 6, height: 6, decoration: const BoxDecoration(color: AppColors.success, shape: BoxShape.circle)),
-                                  const SizedBox(width: 4),
-                                  Text(user.status!, style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600)),
-                                ],
-                              ),
-                            ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
+                  _buildActionRow(isFollowed),
+                _buildStatsRow(user),
+                _buildInfoSection(user),
+                _buildProductsSection(),
+                const SizedBox(height: 80),
               ],
             ),
           ),
-        ),
-        SliverToBoxAdapter(
-          child: Column(
-            children: [
-              if (isOwnProfile)
-                _buildOwnProfileActions()
-              else
-                _buildActionRow(isFollowed),
-              _buildStatsRow(user),
-              _buildInfoSection(user),
-              _buildProductsSection(),
-              const SizedBox(height: 80),
-            ],
-          ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 

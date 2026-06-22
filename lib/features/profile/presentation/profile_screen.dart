@@ -29,6 +29,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
     });
   }
 
+  Future<void> _onRefresh() async {
+    await Future.wait([
+      context.read<WalletProvider>().loadBalance(),
+      context.read<AuthProvider>().refreshProfile(),
+    ]);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -43,14 +50,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            _buildUserInfoSection(),
-            _buildWalletSection(),
-            _buildMenuSection(),
-            _buildLogoutButton(),
-          ],
+      body: RefreshIndicator(
+        onRefresh: _onRefresh,
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          child: Column(
+            children: [
+              _buildUserInfoSection(),
+              _buildWalletSection(),
+              _buildMenuSection(),
+              _buildLogoutButton(),
+            ],
+          ),
         ),
       ),
     );
@@ -602,73 +613,82 @@ class _WalletDetailScreenState extends State<WalletDetailScreen> {
             return _buildWalletShimmer();
           }
 
-          return SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [AppColors.primary, AppColors.primaryLight],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
+          return RefreshIndicator(
+            onRefresh: () async {
+              await Future.wait([
+                wallet.loadBalance(),
+                wallet.loadTransactions(),
+              ]);
+            },
+            child: SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [AppColors.primary, AppColors.primaryLight],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Column(
-                    children: [
-                      const Text(
-                        'Số dư tài khoản',
-                        style: TextStyle(color: Colors.white70),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        '${wallet.balance?.availableBalance.toStringAsFixed(0) ?? 0} xu',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 32,
-                          fontWeight: FontWeight.bold,
+                    child: Column(
+                      children: [
+                        const Text(
+                          'Số dư tài khoản',
+                          style: TextStyle(color: Colors.white70),
                         ),
-                      ),
-                      const SizedBox(height: 16),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          _buildBalanceInfo('Khả dụng', wallet.balance?.availableBalance ?? 0),
-                          Container(
-                            width: 1,
-                            height: 30,
-                            margin: const EdgeInsets.symmetric(horizontal: 16),
-                            color: Colors.white24,
+                        const SizedBox(height: 8),
+                        Text(
+                          '${wallet.balance?.availableBalance.toStringAsFixed(0) ?? 0} xu',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 32,
+                            fontWeight: FontWeight.bold,
                           ),
-                          _buildBalanceInfo('Chờ xử lý', wallet.balance?.pendingBalance ?? 0),
-                        ],
-                      ),
-                    ],
+                        ),
+                        const SizedBox(height: 16),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            _buildBalanceInfo('Khả dụng', wallet.balance?.availableBalance ?? 0),
+                            Container(
+                              width: 1,
+                              height: 30,
+                              margin: const EdgeInsets.symmetric(horizontal: 16),
+                              color: Colors.white24,
+                            ),
+                            _buildBalanceInfo('Chờ xử lý', wallet.balance?.pendingBalance ?? 0),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-                const SizedBox(height: 24),
-                const Text(
-                  'Lịch sử giao dịch',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textPrimary,
+                  const SizedBox(height: 24),
+                  const Text(
+                    'Lịch sử giao dịch',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textPrimary,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 12),
-                if (wallet.transactions.isEmpty)
-                  const EmptyState(
-                    icon: Icons.history,
-                    title: 'Chưa có giao dịch',
-                    message: 'Lịch sử giao dịch sẽ hiển thị ở đây',
-                  )
-                else
-                  ...wallet.transactions.map((tx) => _buildTransactionItem(tx)),
-              ],
+                  const SizedBox(height: 12),
+                  if (wallet.transactions.isEmpty)
+                    const EmptyState(
+                      icon: Icons.history,
+                      title: 'Chưa có giao dịch',
+                      message: 'Lịch sử giao dịch sẽ hiển thị ở đây',
+                    )
+                  else
+                    ...wallet.transactions.map((tx) => _buildTransactionItem(tx)),
+                ],
+              ),
             ),
           );
         },

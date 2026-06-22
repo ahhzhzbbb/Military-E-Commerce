@@ -392,27 +392,30 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: CustomScrollView(
-        slivers: [
-          _buildImageHeader(product),
-          SliverToBoxAdapter(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildProductInfo(product),
-                const SizedBox(height: 8),
-                _buildSellerRow(product),
-                const SizedBox(height: 8),
-                _buildDescriptionBlock(product),
-                const SizedBox(height: 8),
-                _buildRatingBlock(),
-                const SizedBox(height: 8),
-                _buildCommentsBlock(),
-                const SizedBox(height: 100),
-              ],
+      body: RefreshIndicator(
+        onRefresh: _loadProduct,
+        child: CustomScrollView(
+          slivers: [
+            _buildImageHeader(product),
+            SliverToBoxAdapter(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildProductInfo(product),
+                  const SizedBox(height: 8),
+                  _buildSellerRow(product),
+                  const SizedBox(height: 8),
+                  _buildDescriptionBlock(product),
+                  const SizedBox(height: 8),
+                  _buildRatingBlock(),
+                  const SizedBox(height: 8),
+                  _buildCommentsBlock(),
+                  const SizedBox(height: 100),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
       bottomNavigationBar: _buildBottomBar(product),
     );

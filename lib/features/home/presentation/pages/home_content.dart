@@ -3,6 +3,7 @@ import 'package:military_e_commerce/features/product/presentation/search_screen.
 import 'package:military_e_commerce/features/social/presentation/user_profile_screen.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/constants/app_theme.dart';
+import '../../../home/data/product_provider.dart';
 import '../../../../core/widgets/common_widgets.dart';
 import '../../../auth/data/auth_provider.dart';
 import '../../../notifications/data/notification_provider.dart';
@@ -13,9 +14,14 @@ import '../widgets/categories_section.dart';
 import '../widgets/featured_section.dart';
 import '../widgets/all_products_section.dart';
 
-class HomeContent extends StatelessWidget {
+class HomeContent extends StatefulWidget {
   const HomeContent({super.key});
 
+  @override
+  State<HomeContent> createState() => _HomeContentState();
+}
+
+class _HomeContentState extends State<HomeContent> {
   static const _bannerItems = [
     BannerItem(
       title: 'Flash Sale',
@@ -47,32 +53,43 @@ class HomeContent extends StatelessWidget {
     return 'Chào buổi tối';
   }
 
+  Future<void> _onRefresh() async {
+    final productProvider = context.read<ProductProvider>();
+    await Future.wait([
+      productProvider.loadCategories(),
+      productProvider.loadProducts(),
+    ]);
+  }
+
   @override
   Widget build(BuildContext context) {
     return SafeArea(
-      child: CustomScrollView(
-        slivers: [
-          _buildAppBar(context),
-          SliverToBoxAdapter(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildGreeting(context),
-                const SizedBox(height: 12),
-                const CompactBalanceBar(),
-                const SizedBox(height: 14),
-                PromoBanner(items: _bannerItems),
-                const SizedBox(height: 20),
-                const CategoriesSection(),
-                const SizedBox(height: 20),
-                const FeaturedSection(),
-                const SizedBox(height: 20),
-                const AllProductsSection(),
-                const SizedBox(height: 24),
-              ],
+      child: RefreshIndicator(
+        onRefresh: _onRefresh,
+        child: CustomScrollView(
+          slivers: [
+            _buildAppBar(context),
+            SliverToBoxAdapter(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildGreeting(context),
+                  const SizedBox(height: 12),
+                  const CompactBalanceBar(),
+                  const SizedBox(height: 14),
+                  PromoBanner(items: _bannerItems),
+                  const SizedBox(height: 20),
+                  const CategoriesSection(),
+                  const SizedBox(height: 20),
+                  const FeaturedSection(),
+                  const SizedBox(height: 20),
+                  const AllProductsSection(),
+                  const SizedBox(height: 24),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
