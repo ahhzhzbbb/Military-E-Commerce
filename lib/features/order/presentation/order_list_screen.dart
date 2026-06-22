@@ -300,13 +300,22 @@ class _OrderListScreenState extends State<OrderListScreen>
             onPressed: () async {
               Navigator.of(dialogContext).pop();
               final success = await orderProvider.cancelOrder(order.id);
-              if (success && mounted) {
-                messenger.showSnackBar(
-                  const SnackBar(
-                    content: Text('Đã hủy đơn hàng thành công'),
-                    backgroundColor: AppColors.success,
-                  ),
-                );
+              if (mounted) {
+                if (success) {
+                  messenger.showSnackBar(
+                    const SnackBar(
+                      content: Text('Đã hủy đơn hàng thành công'),
+                      backgroundColor: AppColors.success,
+                    ),
+                  );
+                } else {
+                  messenger.showSnackBar(
+                    SnackBar(
+                      content: Text(orderProvider.error ?? 'Không thể hủy đơn hàng'),
+                      backgroundColor: AppColors.error,
+                    ),
+                  );
+                }
               }
             },
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
