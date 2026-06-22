@@ -6,6 +6,7 @@ import '../../../core/constants/app_theme.dart';
 import '../../../core/widgets/common_widgets.dart';
 import '../../../models/models.dart';
 import '../../cart/data/cart_provider.dart';
+import '../../cart/presentation/cart_screen.dart';
 import '../../social/data/follow_provider.dart';
 import '../../social/presentation/user_profile_screen.dart';
 import 'controllers/product_detail_controller.dart';
@@ -84,7 +85,12 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         action: SnackBarAction(
           label: 'Xem giỏ',
           textColor: Colors.white,
-          onPressed: () => Navigator.of(context).pop(),
+          onPressed: () {
+            ScaffoldMessenger.of(context).hideCurrentSnackBar();
+            Navigator.of(context).push(
+              MaterialPageRoute(builder: (context) => const CartScreen()),
+            );
+          },
         ),
       ),
     );
