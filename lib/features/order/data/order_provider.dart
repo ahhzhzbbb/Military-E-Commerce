@@ -179,8 +179,10 @@ class OrderProvider extends ChangeNotifier {
     final response = await _apiClient.post(
       ApiConstants.cancelOrder,
       body: {
-        'id': orderId, // Backend CancelOrderDto expects string 'id'
-        'reason': 'Người dùng hủy đơn', // Backend strictly requires 'reason' since it lacks @IsOptional()
+        'id': orderId,
+        'purchase_id': orderId,
+        'order_id': orderId,
+        'reason': 'Người dùng hủy đơn',
       },
       requiresAuth: true,
     );
@@ -206,12 +208,18 @@ class OrderProvider extends ChangeNotifier {
         status: 'cancelled',
         statusName: 'Đã hủy',
         notes: _orders[index].notes,
+        cancelReason: 'Người dùng hủy đơn',
+        trackingNumber: _orders[index].trackingNumber,
         createdAt: _orders[index].createdAt,
         updatedAt: DateTime.now(),
+        timeline: _orders[index].timeline,
       );
       notifyListeners();
       return true;
     }
+    
+    _error = 'Không tìm thấy đơn hàng trên máy để cập nhật trạng thái';
+    notifyListeners();
     return false;
   }
 

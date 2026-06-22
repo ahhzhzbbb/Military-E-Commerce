@@ -192,6 +192,14 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> refreshProfile() async {
+    final updatedUser = await _fetchCurrentUser();
+    if (updatedUser != null) {
+      _user = updatedUser;
+      notifyListeners();
+    }
+  }
+
   Future<bool> updateProfile({
     String? username,
     String? email,

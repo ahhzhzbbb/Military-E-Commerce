@@ -50,18 +50,26 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
           body: Column(
             children: [
               Expanded(
-                child: SingleChildScrollView(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildStatusSection(order),
-                      _buildAddressSection(order),
-                      _buildItemsSection(order),
-                      _buildSummarySection(order),
-                      if (order.timeline != null && order.timeline!.isNotEmpty)
-                        OrderTimelineWidget(timeline: order.timeline!),
-                      if (order.status == 'delivered') _buildReviewSection(context, order),
-                    ],
+                child: RefreshIndicator(
+                  onRefresh: () async {
+                    final orderProvider = context.read<OrderProvider>();
+                    await orderProvider.loadOrders();
+                    await orderProvider.loadOrderTimeline(widget.orderId);
+                  },
+                  child: SingleChildScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildStatusSection(order),
+                        _buildAddressSection(order),
+                        _buildItemsSection(order),
+                        _buildSummarySection(order),
+                        if (order.timeline != null && order.timeline!.isNotEmpty)
+                          OrderTimelineWidget(timeline: order.timeline!),
+                        if (order.status == 'delivered') _buildReviewSection(context, order),
+                      ],
+                    ),
                   ),
                 ),
               ),
