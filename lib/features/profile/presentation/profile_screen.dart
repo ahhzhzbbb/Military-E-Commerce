@@ -511,28 +511,31 @@ class _ProfileScreenState extends State<ProfileScreen> {
     required String subtitle,
     required VoidCallback onTap,
   }) {
-    return ListTile(
-      leading: Container(
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: AppColors.primary.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(8),
+    return Material(
+      type: MaterialType.transparency,
+      child: ListTile(
+        leading: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: AppColors.primary.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(icon, color: AppColors.primary),
         ),
-        child: Icon(icon, color: AppColors.primary),
-      ),
-      title: Text(
-        title,
-        style: const TextStyle(fontWeight: FontWeight.w500),
-      ),
-      subtitle: Text(
-        subtitle,
-        style: const TextStyle(
-          fontSize: 12,
-          color: AppColors.textSecondary,
+        title: Text(
+          title,
+          style: const TextStyle(fontWeight: FontWeight.w500),
         ),
+        subtitle: Text(
+          subtitle,
+          style: const TextStyle(
+            fontSize: 12,
+            color: AppColors.textSecondary,
+          ),
+        ),
+        trailing: const Icon(Icons.chevron_right, color: AppColors.textHint),
+        onTap: onTap,
       ),
-      trailing: const Icon(Icons.chevron_right, color: AppColors.textHint),
-      onTap: onTap,
     );
   }
 
