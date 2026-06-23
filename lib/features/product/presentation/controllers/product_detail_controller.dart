@@ -1,5 +1,7 @@
 import '../../../../core/api/api_client.dart';
 import '../../../../core/api/api_data.dart';
+import '../../../../core/cache/api_cache.dart';
+import '../../../../core/cache/catalog_cache.dart';
 import '../../../../core/constants/api_constants.dart';
 import '../../../../models/models.dart';
 
@@ -41,14 +43,63 @@ class ProductDetailController {
         .toList();
   }
 
-  Future<void> loadProduct(String productId) async {
-    isLoading = true;
-    error = null;
+  void _updateAverageRating() {
+    averageRating = ratings.isEmpty
+        ? 0
+        : ratings.fold(0.0, (sum, rating) => sum + rating.stars) /
+            ratings.length;
+  }
+
+  Future<void> loadProduct(
+    String productId, {
+    void Function()? onCachedData,
+  }) async {
+    final parsedProductId = productIdParam(productId);
+    final productBody = {'id': parsedProductId};
+    final commentsBody = {
+      'product_id': parsedProductId,
+      'index': 0,
+      'count': 50,
+    };
+    final ratingsBody = {
+      'product_id': parsedProductId,
+      'index': 0,
+      'count': 50,
+    };
+    final productCacheKey = CatalogCache.productDetailKey(
+      productId,
+      productBody,
+    );
+    final commentsCacheKey = CatalogCache.commentsKey(productId, commentsBody);
+    final ratingsCacheKey = CatalogCache.ratingsKey(productId, ratingsBody);
+
+    final cachedProduct = await ApiCache.read(productCacheKey);
+    final cachedComments = await ApiCache.read(commentsCacheKey);
+    final cachedRatings = await ApiCache.read(ratingsCacheKey);
+    final hasProductCache = cachedProduct != null;
+
+    if (hasProductCache) {
+      product = parseProduct(cachedProduct);
+      isLiked = product?.isLiked ?? false;
+      if (cachedComments != null) {
+        comments = parseComments(cachedComments);
+      }
+      if (cachedRatings != null) {
+        ratings = parseRatings(cachedRatings);
+      }
+      _updateAverageRating();
+      error = null;
+      isLoading = false;
+      onCachedData?.call();
+    } else {
+      isLoading = true;
+      error = null;
+    }
 
     try {
       final productResponse = await apiClient.post(
         ApiConstants.getProduct,
-        body: {'id': productIdParam(productId)},
+        body: productBody,
         requiresAuth: true,
       );
 
@@ -60,31 +111,55 @@ class ProductDetailController {
 
       final commentsResponse = await apiClient.post(
         ApiConstants.getCommentsProduct,
-        body: {'product_id': productIdParam(productId), 'index': 0, 'count': 50},
+        body: commentsBody,
         requiresAuth: true,
       );
 
       final ratingsResponse = await apiClient.post(
         ApiConstants.getRates,
-        body: {'product_id': productIdParam(productId), 'index': 0, 'count': 50},
+        body: ratingsBody,
         requiresAuth: true,
       );
 
       product = parseProduct(productResponse.data);
-      comments =
-          commentsResponse.isSuccess ? parseComments(commentsResponse.data) : [];
-      ratings =
-          ratingsResponse.isSuccess ? parseRatings(ratingsResponse.data) : [];
-      isLiked = product?.isLiked ?? false;
-      if (ratings.isNotEmpty) {
-        averageRating =
-            ratings.fold(0.0, (sum, r) => sum + r.stars) / ratings.length;
+      await ApiCache.write(
+        productCacheKey,
+        productResponse.data,
+        CatalogCache.productDetailTtl,
+      );
+
+      if (commentsResponse.isSuccess) {
+        comments = parseComments(commentsResponse.data);
+        await ApiCache.write(
+          commentsCacheKey,
+          commentsResponse.data,
+          CatalogCache.productFeedbackTtl,
+        );
+      } else if (cachedComments == null) {
+        comments = [];
       }
+
+      if (ratingsResponse.isSuccess) {
+        ratings = parseRatings(ratingsResponse.data);
+        await ApiCache.write(
+          ratingsCacheKey,
+          ratingsResponse.data,
+          CatalogCache.productFeedbackTtl,
+        );
+      } else if (cachedRatings == null) {
+        ratings = [];
+      }
+
+      isLiked = product?.isLiked ?? false;
+      _updateAverageRating();
     } catch (e) {
-      product = null;
-      comments = [];
-      ratings = [];
-      error = e.toString();
+      if (!hasProductCache) {
+        product = null;
+        comments = [];
+        ratings = [];
+        averageRating = 0;
+        error = e.toString();
+      }
     } finally {
       isLoading = false;
     }
@@ -101,6 +176,7 @@ class ProductDetailController {
 
     if (response.isSuccess) {
       isLiked = !isLiked;
+      await CatalogCache.clearProduct(productId);
       return true;
     }
     return false;

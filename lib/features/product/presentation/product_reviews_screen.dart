@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../core/api/api_client.dart';
 import '../../../core/api/api_data.dart';
+import '../../../core/cache/catalog_cache.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../../core/constants/app_theme.dart';
 import '../../../core/widgets/common_widgets.dart';
@@ -96,6 +97,7 @@ class _ProductReviewsScreenState extends State<ProductReviewsScreen> {
     );
 
     if (response.isSuccess && mounted) {
+      await CatalogCache.clearProduct(widget.productId);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Đã gửi đánh giá thành công!'), backgroundColor: AppColors.success),
       );
