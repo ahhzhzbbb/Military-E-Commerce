@@ -210,4 +210,24 @@ class FollowProvider extends ChangeNotifier {
     }
     return false;
   }
+
+  Future<bool> unblockUser(String userId) async {
+    final response = await _apiClient.post(
+      ApiConstants.setUserBlock,
+      body: {
+        'user_id': int.tryParse(userId) ?? userId,
+        'type': 1,
+      },
+      requiresAuth: true,
+    );
+
+    if (response.isSuccess ||
+        response.code == ResponseCodes.actionDonePreviously) {
+      _blocked.removeWhere((user) => user.id == userId);
+      notifyListeners();
+      return true;
+    }
+
+    return false;
+  }
 }

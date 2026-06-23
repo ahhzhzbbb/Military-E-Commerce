@@ -20,6 +20,19 @@ class _SignupScreenState extends State<SignupScreen> {
   bool _obscureConfirmPassword = true;
   bool _acceptTerms = false;
 
+  String _normalizePhoneNumber(String value) {
+    final cleaned = value.trim().replaceAll(RegExp(r'[\s\-.()]'), '');
+    if (cleaned.startsWith('+84')) return '0${cleaned.substring(3)}';
+    if (cleaned.startsWith('84')) return '0${cleaned.substring(2)}';
+    return cleaned;
+  }
+
+  bool _isValidVietnameseMobile(String value) {
+    return RegExp(r'^0(3|5|7|8|9)[0-9]{8}$').hasMatch(
+      _normalizePhoneNumber(value),
+    );
+  }
+
   @override
   void dispose() {
     _usernameController.dispose();
@@ -43,7 +56,7 @@ class _SignupScreenState extends State<SignupScreen> {
     if (_formKey.currentState?.validate() ?? false) {
       final authProvider = context.read<AuthProvider>();
       final success = await authProvider.signup(
-        phoneNumber: _phoneController.text.trim(),
+        phoneNumber: _normalizePhoneNumber(_phoneController.text),
         password: _passwordController.text,
         username: _usernameController.text.trim(),
       );
@@ -130,7 +143,7 @@ class _SignupScreenState extends State<SignupScreen> {
                     if (value == null || value.isEmpty) {
                       return 'Vui lòng nhập số điện thoại';
                     }
-                    if (value.length < 10) {
+                    if (!_isValidVietnameseMobile(value)) {
                       return 'Số điện thoại không hợp lệ';
                     }
                     return null;

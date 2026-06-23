@@ -30,6 +30,7 @@ class _HomeScreenState extends State<HomeScreen> {
       final followProvider = context.read<FollowProvider>();
       followProvider.setCurrentUserId(userId);
       followProvider.loadFollowing();
+      followProvider.loadBlocked();
     });
   }
 
@@ -61,6 +62,7 @@ class _HomeScreenState extends State<HomeScreen> {
             followProvider.setCurrentUserId(userId);
             followProvider.loadFollowing();
             followProvider.loadFollowers();
+            followProvider.loadBlocked();
           }
         },
         items: const [

@@ -1,4 +1,6 @@
 import 'dart:convert';
+import 'dart:typed_data';
+
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../constants/api_constants.dart';
@@ -151,6 +153,37 @@ class ApiClient {
         if (_accessToken != null) 'Authorization': 'Bearer $_accessToken',
       });
       request.files.add(await http.MultipartFile.fromPath(field, filePath));
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+      return _handleResponse(response);
+    } catch (e) {
+      return ApiResponse(
+        isSuccess: false,
+        message: 'Upload error: ${e.toString()}',
+        code: -1,
+      );
+    }
+  }
+
+  Future<ApiResponse> uploadFileBytes(
+    String endpoint, {
+    required Uint8List bytes,
+    required String filename,
+    String field = 'file',
+  }) async {
+    try {
+      final uri = Uri.parse('${ApiConstants.baseUrl}$endpoint');
+      final request = http.MultipartRequest('POST', uri);
+      request.headers['Accept'] = 'application/json';
+
+      final token = await getAccessToken();
+      if (token != null) {
+        request.headers['Authorization'] = 'Bearer $token';
+      }
+
+      request.files.add(
+        http.MultipartFile.fromBytes(field, bytes, filename: filename),
+      );
       final streamedResponse = await request.send();
       final response = await http.Response.fromStream(streamedResponse);
       return _handleResponse(response);

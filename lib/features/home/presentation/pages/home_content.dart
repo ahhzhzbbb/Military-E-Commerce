@@ -6,6 +6,7 @@ import '../../../../core/constants/app_theme.dart';
 import '../../../home/data/product_provider.dart';
 import '../../../../core/widgets/common_widgets.dart';
 import '../../../auth/data/auth_provider.dart';
+import '../../../social/data/follow_provider.dart';
 import '../../../notifications/data/notification_provider.dart';
 import '../../../notifications/presentation/notification_screen.dart';
 import '../widgets/compact_balance_bar.dart';
@@ -55,9 +56,11 @@ class _HomeContentState extends State<HomeContent> {
 
   Future<void> _onRefresh() async {
     final productProvider = context.read<ProductProvider>();
+    final followProvider = context.read<FollowProvider>();
     await Future.wait([
       productProvider.loadCategories(),
       productProvider.loadProducts(),
+      followProvider.loadBlocked(),
     ]);
   }
 
