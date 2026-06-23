@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:military_e_commerce/core/api/api_client.dart';
 import 'package:military_e_commerce/core/api/api_data.dart';
+import 'package:military_e_commerce/core/cache/api_cache.dart';
+import 'package:military_e_commerce/core/cache/catalog_cache.dart';
 import 'package:military_e_commerce/core/constants/api_constants.dart';
 import 'package:military_e_commerce/models/models.dart';
 
@@ -28,7 +30,7 @@ class ProductProvider extends ChangeNotifier {
 
   // Helper methods to parse API responses
   List<Category> _parseCategories(dynamic data) {
-    return ApiData.asList(data, ['data'])
+    return ApiData.asList(data, ['data', 'categories'])
         .whereType<Map>()
         .map((item) => Category.fromJson(Map<String, dynamic>.from(item)))
         .toList();
@@ -44,9 +46,20 @@ class ProductProvider extends ChangeNotifier {
 
   // Load categories from API
   Future<void> loadCategories() async {
-    _isLoading = true;
-    _error = null;
-    notifyListeners();
+    final cacheKey = CatalogCache.categoriesKey();
+    final cachedData = await ApiCache.read(cacheKey);
+    final hasCache = cachedData != null;
+
+    if (hasCache) {
+      _categories = _parseCategories(cachedData);
+      _error = null;
+      _isLoading = false;
+      notifyListeners();
+    } else {
+      _isLoading = true;
+      _error = null;
+      notifyListeners();
+    }
 
     try {
       final response = await _apiClient.post(ApiConstants.getCategories);
@@ -54,9 +67,16 @@ class ProductProvider extends ChangeNotifier {
         throw Exception('${response.message} (Code: ${response.code})');
       }
       _categories = _parseCategories(response.data);
+      await ApiCache.write(
+        cacheKey,
+        response.data,
+        CatalogCache.categoriesTtl,
+      );
     } catch (e) {
-      _error = e.toString();
-      _categories = [];
+      if (!hasCache) {
+        _error = e.toString();
+        _categories = [];
+      }
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -65,22 +85,36 @@ class ProductProvider extends ChangeNotifier {
 
   // Load products with optional category filter and search keyword
   Future<void> loadProducts({int? categoryId, String? keyword}) async {
-    _isLoading = true;
-    _error = null;
+    final trimmedKeyword = keyword?.trim() ?? '';
+    final useSearchEndpoint = categoryId != null || trimmedKeyword.isNotEmpty;
+    final body = <String, dynamic>{
+      'keyword': useSearchEndpoint
+          ? (trimmedKeyword.isNotEmpty ? trimmedKeyword : ' ')
+          : '',
+      'index': 0,
+      'count': 20,
+      if (categoryId != null) 'category_id': _categoryParam(categoryId),
+    };
+    final cacheKey = useSearchEndpoint
+        ? CatalogCache.searchKey(body)
+        : CatalogCache.productListKey(body);
+    final cachedData = await ApiCache.read(cacheKey);
+    final hasCache = cachedData != null;
+
     _selectedCategoryId = categoryId;
-    notifyListeners();
+    if (hasCache) {
+      _products = _parseProducts(cachedData);
+      _featuredProducts = _products.take(5).toList();
+      _error = null;
+      _isLoading = false;
+      notifyListeners();
+    } else {
+      _isLoading = true;
+      _error = null;
+      notifyListeners();
+    }
 
     try {
-      final trimmedKeyword = keyword?.trim() ?? '';
-      final useSearchEndpoint = categoryId != null || trimmedKeyword.isNotEmpty;
-      final body = <String, dynamic>{
-        'keyword': useSearchEndpoint
-            ? (trimmedKeyword.isNotEmpty ? trimmedKeyword : ' ')
-            : '',
-        'index': 0,
-        'count': 20,
-        if (categoryId != null) 'category_id': _categoryParam(categoryId),
-      };
       final response = await _apiClient.post(
         useSearchEndpoint ? ApiConstants.search : ApiConstants.getListProducts,
         body: body,
@@ -92,16 +126,22 @@ class ProductProvider extends ChangeNotifier {
 
       _products = _parseProducts(response.data);
       _featuredProducts = _products.take(5).toList();
+      await ApiCache.write(
+        cacheKey,
+        response.data,
+        useSearchEndpoint ? CatalogCache.searchTtl : CatalogCache.productListTtl,
+      );
     } catch (e) {
-      _error = e.toString();
-      _products = [];
-      _featuredProducts = [];
+      if (!hasCache) {
+        _error = e.toString();
+        _products = [];
+        _featuredProducts = [];
+      }
     } finally {
       _isLoading = false;
       notifyListeners();
     }
   }
-
 
   // Load all products without any filters
   Future<void> loadAllProducts() async {

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:military_e_commerce/core/api/api_client.dart';
 import 'package:military_e_commerce/core/api/api_data.dart';
+import 'package:military_e_commerce/core/cache/api_cache.dart';
 import 'package:military_e_commerce/core/constants/api_constants.dart';
 import 'package:military_e_commerce/models/models.dart';
 
@@ -187,6 +188,7 @@ class AuthProvider extends ChangeNotifier {
 
     await _apiClient.post(ApiConstants.logout, requiresAuth: true);
     await _apiClient.clearTokens();
+    await ApiCache.clearAll();
     _user = null;
     _status = AuthStatus.unauthenticated;
     notifyListeners();

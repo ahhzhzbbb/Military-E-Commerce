@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:military_e_commerce/core/api/api_client.dart';
 import 'package:military_e_commerce/core/api/api_data.dart';
+import 'package:military_e_commerce/core/cache/api_cache.dart';
+import 'package:military_e_commerce/core/cache/catalog_cache.dart';
 import 'package:military_e_commerce/core/constants/api_constants.dart';
 import 'package:military_e_commerce/core/constants/app_theme.dart';
 import 'package:military_e_commerce/core/widgets/common_widgets.dart';
@@ -41,19 +43,41 @@ class _SearchScreenState extends State<SearchScreen> {
     super.dispose();
   }
 
+  List<Category> _parseCategories(dynamic data) {
+    return ApiData.asList(data, ['categories', 'data'])
+        .whereType<Map>()
+        .map((item) => Category.fromJson(Map<String, dynamic>.from(item)))
+        .toList();
+  }
+
   Future<void> _loadCategories() async {
+    final cacheKey = CatalogCache.categoriesKey();
+    final cachedData = await ApiCache.read(cacheKey);
+    final hasCache = cachedData != null;
+
+    if (hasCache && mounted) {
+      setState(() {
+        _categories = _parseCategories(cachedData);
+        _error = null;
+      });
+    }
+
     final response = await _apiClient.post(ApiConstants.getCategories);
     if (!mounted) return;
 
     if (response.isSuccess) {
       setState(() {
-        _categories = ApiData.asList(response.data, ['categories'])
-            .whereType<Map>()
-            .map((item) => Category.fromJson(Map<String, dynamic>.from(item)))
-            .toList();
+        _categories = _parseCategories(response.data);
       });
+      await ApiCache.write(
+        cacheKey,
+        response.data,
+        CatalogCache.categoriesTtl,
+      );
     } else {
-      setState(() => _error = response.message);
+      if (!hasCache) {
+        setState(() => _error = response.message);
+      }
     }
   }
 
@@ -152,22 +176,36 @@ class _SearchScreenState extends State<SearchScreen> {
       return;
     }
 
+    final body = <String, dynamic>{
+      'keyword': trimmedQuery.isNotEmpty ? trimmedQuery : ' ',
+      'index': 0,
+      'count': 20,
+      if (_selectedCategoryId != null)
+        'category_id': _categoryParam(_selectedCategoryId!),
+    };
     final currentRequestId = ++_requestId;
-    setState(() {
-      _isSearching = true;
-      _error = null;
-    });
+    final cacheKey = CatalogCache.searchKey(body);
+    final cachedData = await ApiCache.read(cacheKey);
+    if (!mounted || currentRequestId != _requestId) return;
+    final hasCache = cachedData != null;
+
+    if (hasCache) {
+      setState(() {
+        _searchResults = _parseProducts(cachedData);
+        _isSearching = false;
+        _error = null;
+      });
+    } else {
+      setState(() {
+        _isSearching = true;
+        _error = null;
+      });
+    }
 
     try {
       final response = await _apiClient.post(
         ApiConstants.search,
-        body: {
-          'keyword': trimmedQuery.isNotEmpty ? trimmedQuery : ' ',
-          'index': 0,
-          'count': 20,
-          if (_selectedCategoryId != null)
-            'category_id': _categoryParam(_selectedCategoryId!),
-        },
+        body: body,
         requiresAuth: true,
       );
 
@@ -180,13 +218,16 @@ class _SearchScreenState extends State<SearchScreen> {
       setState(() {
         _searchResults = _parseProducts(response.data);
       });
+      await ApiCache.write(cacheKey, response.data, CatalogCache.searchTtl);
       _loadSavedSearches();
     } catch (e) {
       if (!mounted || currentRequestId != _requestId) return;
-      setState(() {
-        _searchResults = [];
-        _error = e.toString();
-      });
+      if (!hasCache) {
+        setState(() {
+          _searchResults = [];
+          _error = e.toString();
+        });
+      }
     } finally {
       if (mounted && currentRequestId == _requestId) {
         setState(() => _isSearching = false);

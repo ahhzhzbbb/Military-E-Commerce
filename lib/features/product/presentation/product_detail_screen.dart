@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/api/api_client.dart';
+import '../../../core/cache/catalog_cache.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../../core/constants/app_theme.dart';
 import '../../../core/widgets/common_widgets.dart';
@@ -34,7 +35,12 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   }
 
   Future<void> _loadProduct() async {
-    await _controller.loadProduct(widget.productId.toString());
+    await _controller.loadProduct(
+      widget.productId.toString(),
+      onCachedData: () {
+        if (mounted) setState(() {});
+      },
+    );
     if (mounted) setState(() {});
   }
 
@@ -118,6 +124,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     );
 
     if (response.isSuccess && mounted) {
+      await CatalogCache.clearProduct(widget.productId.toString());
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Đã gửi bình luận!'), backgroundColor: AppColors.success),
       );
@@ -155,6 +162,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     );
 
     if (response.isSuccess && mounted) {
+      await CatalogCache.clearProduct(widget.productId.toString());
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Đã gửi đánh giá thành công!'), backgroundColor: AppColors.success),
       );
