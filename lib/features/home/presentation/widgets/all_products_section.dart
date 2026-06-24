@@ -100,113 +100,117 @@ class _ProductCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () {
-        Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (context) => ProductDetailScreen(productId: product.id),
-          ),
-        );
-      },
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.06),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
+    return ProductLikeOverlay(
+      productId: product.id,
+      isLiked: product.isLiked,
+      child: GestureDetector(
+        onTap: () {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (context) => ProductDetailScreen(productId: product.id),
             ),
-          ],
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              flex: 5,
-              child: Stack(
-                children: [
-                  Positioned.fill(
-                    child: CustomNetworkImage(
-                      imageUrl: product.images.isNotEmpty ? product.images.first : null,
-                      fit: BoxFit.cover,
+          );
+        },
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.06),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                flex: 5,
+                child: Stack(
+                  children: [
+                    Positioned.fill(
+                      child: CustomNetworkImage(
+                        imageUrl: product.images.isNotEmpty ? product.images.first : null,
+                        fit: BoxFit.cover,
+                      ),
                     ),
-                  ),
-                  if (product.hasDiscount)
-                    Positioned(
-                      top: 8,
-                      right: 8,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: AppColors.error,
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text(
-                          '-${product.discountPercent.toStringAsFixed(0)}%',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
+                    if (product.hasDiscount)
+                      Positioned(
+                        top: 8,
+                        right: 8,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: AppColors.error,
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            '-${product.discountPercent.toStringAsFixed(0)}%',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                ],
+                  ],
+                ),
               ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(10),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    product.name,
-                    style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
-                      height: 1.3,
+              Padding(
+                padding: const EdgeInsets.all(10),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      product.name,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        height: 1.3,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 6),
-                  Row(
-                    children: [
-                      if (product.ratingCount != null && product.ratingCount! > 0) ...[
-                        const Icon(Icons.star, size: 13, color: Colors.amber),
-                        const SizedBox(width: 2),
-                        Text(
-                          '${product.ratingCount}',
-                          style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
-                        ),
-                        const SizedBox(width: 6),
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        if (product.ratingCount != null && product.ratingCount! > 0) ...[
+                          const Icon(Icons.star, size: 13, color: Colors.amber),
+                          const SizedBox(width: 2),
+                          Text(
+                            '${product.ratingCount}',
+                            style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                          ),
+                          const SizedBox(width: 6),
+                        ],
+                        const Spacer(),
                       ],
-                      const Spacer(),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  PriceDisplay(
-                    price: product.effectivePrice,
-                    originalPrice: product.hasDiscount ? product.price : null,
-                    showDiscountPercent: false,
-                    style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.primary,
                     ),
-                    originalStyle: const TextStyle(
-                      fontSize: 11,
-                      color: AppColors.textHint,
-                      decoration: TextDecoration.lineThrough,
+                    const SizedBox(height: 6),
+                    PriceDisplay(
+                      price: product.effectivePrice,
+                      originalPrice: product.hasDiscount ? product.price : null,
+                      showDiscountPercent: false,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.primary,
+                      ),
+                      originalStyle: const TextStyle(
+                        fontSize: 11,
+                        color: AppColors.textHint,
+                        decoration: TextDecoration.lineThrough,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

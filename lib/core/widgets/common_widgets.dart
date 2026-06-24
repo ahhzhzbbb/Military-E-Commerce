@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:shimmer/shimmer.dart';
 import '../constants/app_theme.dart';
+import '../constants/api_constants.dart';
+import '../api/api_client.dart';
 
 class CustomNetworkImage extends StatelessWidget {
   final String? imageUrl;
@@ -553,6 +555,166 @@ class ShimmerUserProfile extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class ProductLikeOverlay extends StatefulWidget {
+  final int productId;
+  final bool isLiked;
+  final Widget child;
+
+  const ProductLikeOverlay({
+    super.key,
+    required this.productId,
+    required this.isLiked,
+    required this.child,
+  });
+
+  @override
+  State<ProductLikeOverlay> createState() => _ProductLikeOverlayState();
+}
+
+class _ProductLikeOverlayState extends State<ProductLikeOverlay>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scaleAnimation;
+  late Animation<double> _opacityAnimation;
+  OverlayEntry? _overlayEntry;
+  bool _isLiked = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _isLiked = widget.isLiked;
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    );
+    _scaleAnimation = TweenSequence<double>([
+      TweenSequenceItem(tween: Tween(begin: 0.0, end: 1.4), weight: 0.4),
+      TweenSequenceItem(tween: Tween(begin: 1.4, end: 1.0), weight: 0.3),
+      TweenSequenceItem(tween: Tween(begin: 1.0, end: 1.1), weight: 0.15),
+      TweenSequenceItem(tween: Tween(begin: 1.1, end: 1.0), weight: 0.15),
+    ]).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
+    _opacityAnimation = TweenSequence<double>([
+      TweenSequenceItem(tween: Tween(begin: 0.0, end: 1.0), weight: 0.3),
+      TweenSequenceItem(tween: ConstantTween(1.0), weight: 0.5),
+      TweenSequenceItem(tween: Tween(begin: 1.0, end: 0.0), weight: 0.2),
+    ]).animate(_controller);
+  }
+
+  @override
+  void didUpdateWidget(covariant ProductLikeOverlay oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.isLiked != widget.isLiked) {
+      _isLiked = widget.isLiked;
+    }
+  }
+
+  @override
+  void dispose() {
+    _removeOverlay();
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _removeOverlay() {
+    _overlayEntry?.remove();
+    _overlayEntry = null;
+  }
+
+  void _showHeart() {
+    _removeOverlay();
+    final renderBox = context.findRenderObject() as RenderBox;
+    final size = renderBox.size;
+    final offset = renderBox.localToGlobal(Offset.zero);
+
+    _overlayEntry = OverlayEntry(
+      builder: (_) {
+        return Positioned(
+          left: offset.dx,
+          top: offset.dy,
+          width: size.width,
+          height: size.height,
+          child: IgnorePointer(
+            child: AnimatedBuilder(
+              animation: _controller,
+              builder: (_, _) {
+                return Opacity(
+                  opacity: _opacityAnimation.value,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.35),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    alignment: Alignment.center,
+                    child: Transform.scale(
+                      scale: _scaleAnimation.value,
+                      child: Icon(
+                        _isLiked ? Icons.favorite : Icons.favorite_border,
+                        color: _isLiked ? AppColors.error : Colors.white,
+                        size: 64,
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        );
+      },
+    );
+
+    Overlay.of(context).insert(_overlayEntry!);
+    _controller.forward(from: 0).then((_) {
+      _removeOverlay();
+    });
+  }
+
+  Future<void> _handleLongPress() async {
+    final messenger = ScaffoldMessenger.of(context);
+    setState(() => _isLiked = !_isLiked);
+    _showHeart();
+
+    final apiClient = ApiClient();
+    final response = await apiClient.post(
+      ApiConstants.likeProduct,
+      body: {'product_id': widget.productId},
+      requiresAuth: true,
+    );
+
+    if (!response.isSuccess) {
+      if (mounted) {
+        setState(() => _isLiked = !_isLiked);
+        messenger.showSnackBar(
+          const SnackBar(
+            content: Text('Thao tác thất bại'),
+            backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+            duration: Duration(seconds: 1),
+          ),
+        );
+      }
+    } else {
+      if (mounted) {
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(_isLiked ? 'Đã thích sản phẩm' : 'Đã bỏ thích'),
+            backgroundColor: AppColors.success,
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 1),
+          ),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onLongPress: _handleLongPress,
+      child: widget.child,
     );
   }
 }
