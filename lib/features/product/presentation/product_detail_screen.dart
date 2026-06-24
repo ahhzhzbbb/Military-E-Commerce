@@ -370,6 +370,328 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     }
   }
 
+  // ── Report Product ─────────────────────────────────────────────
+
+  static const List<Map<String, String>> _reportSubjects = [
+    {'value': 'counterfeit', 'label': 'Hàng giả / hàng nhái'},
+    {'value': 'prohibited', 'label': 'Sản phẩm bị cấm'},
+    {'value': 'wrong_info', 'label': 'Thông tin sai lệch'},
+    {'value': 'fraud', 'label': 'Lừa đảo'},
+    {'value': 'inappropriate', 'label': 'Nội dung không phù hợp'},
+    {'value': 'other', 'label': 'Lý do khác'},
+  ];
+
+  void _showReportDialog() {
+    String? selectedSubject;
+    final detailsController = TextEditingController();
+    bool isSubmitting = false;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setSheetState) {
+          return Container(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(context).size.height * 0.85,
+            ),
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Handle bar
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    margin: const EdgeInsets.only(top: 12, bottom: 8),
+                    decoration: BoxDecoration(
+                      color: AppColors.divider,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                // Header
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: AppColors.error.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(Icons.flag_rounded, color: AppColors.error, size: 22),
+                      ),
+                      const SizedBox(width: 12),
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Báo cáo sản phẩm',
+                              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+                            ),
+                            SizedBox(height: 2),
+                            Text(
+                              'Giúp chúng tôi hiểu vấn đề bạn gặp phải',
+                              style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                            ),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close, color: AppColors.textSecondary),
+                        onPressed: () => Navigator.of(context).pop(),
+                      ),
+                    ],
+                  ),
+                ),
+                const Divider(height: 1),
+                // Content
+                Flexible(
+                  child: SingleChildScrollView(
+                    padding: EdgeInsets.fromLTRB(20, 16, 20, MediaQuery.of(context).viewInsets.bottom + 20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Chọn lý do báo cáo *',
+                          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                        ),
+                        const SizedBox(height: 12),
+                        // Radio options
+                        ..._reportSubjects.map((subject) {
+                          final isSelected = selectedSubject == subject['label'];
+                          return GestureDetector(
+                            onTap: () => setSheetState(() => selectedSubject = subject['label']),
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              margin: const EdgeInsets.only(bottom: 8),
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                              decoration: BoxDecoration(
+                                color: isSelected
+                                    ? AppColors.error.withValues(alpha: 0.06)
+                                    : AppColors.background,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: isSelected
+                                      ? AppColors.error.withValues(alpha: 0.5)
+                                      : AppColors.divider,
+                                  width: isSelected ? 1.5 : 1,
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  AnimatedContainer(
+                                    duration: const Duration(milliseconds: 200),
+                                    width: 22,
+                                    height: 22,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: isSelected ? AppColors.error : Colors.transparent,
+                                      border: Border.all(
+                                        color: isSelected ? AppColors.error : AppColors.textHint,
+                                        width: 2,
+                                      ),
+                                    ),
+                                    child: isSelected
+                                        ? const Icon(Icons.check, color: Colors.white, size: 14)
+                                        : null,
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Text(
+                                      subject['label']!,
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                                        color: isSelected ? AppColors.error : AppColors.textPrimary,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        }),
+                        const SizedBox(height: 16),
+                        const Text(
+                          'Mô tả chi tiết *',
+                          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                        ),
+                        const SizedBox(height: 8),
+                        TextField(
+                          controller: detailsController,
+                          decoration: InputDecoration(
+                            hintText: 'Mô tả cụ thể vấn đề bạn gặp phải...',
+                            hintStyle: const TextStyle(color: AppColors.textHint, fontSize: 13),
+                            filled: true,
+                            fillColor: AppColors.background,
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: const BorderSide(color: AppColors.divider),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: const BorderSide(color: AppColors.divider),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: const BorderSide(color: AppColors.error, width: 1.5),
+                            ),
+                            contentPadding: const EdgeInsets.all(14),
+                          ),
+                          maxLines: 4,
+                          minLines: 3,
+                          style: const TextStyle(fontSize: 14),
+                        ),
+                        const SizedBox(height: 20),
+                        SizedBox(
+                          width: double.infinity,
+                          height: 50,
+                          child: ElevatedButton.icon(
+                            onPressed: isSubmitting
+                                ? null
+                                : () async {
+                                    if (selectedSubject == null) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(
+                                          content: Text('Vui lòng chọn lý do báo cáo'),
+                                          backgroundColor: AppColors.warning,
+                                        ),
+                                      );
+                                      return;
+                                    }
+                                    final details = detailsController.text.trim();
+                                    if (details.isEmpty) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(
+                                          content: Text('Vui lòng mô tả chi tiết vấn đề'),
+                                          backgroundColor: AppColors.warning,
+                                        ),
+                                      );
+                                      return;
+                                    }
+                                    setSheetState(() => isSubmitting = true);
+                                    Navigator.of(context).pop();
+                                    await _submitReport(selectedSubject!, details);
+                                  },
+                            icon: isSubmitting
+                                ? const SizedBox(
+                                    width: 18,
+                                    height: 18,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                : const Icon(Icons.send_rounded, size: 18),
+                            label: Text(
+                              isSubmitting ? 'Đang gửi...' : 'Gửi báo cáo',
+                              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.error,
+                              foregroundColor: Colors.white,
+                              disabledBackgroundColor: AppColors.error.withValues(alpha: 0.5),
+                              disabledForegroundColor: Colors.white70,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              elevation: 0,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Future<void> _submitReport(String subject, String details) async {
+    final productId = int.tryParse(widget.productId.toString()) ?? widget.productId;
+
+    final response = await _apiClient.post(
+      ApiConstants.reportProduct,
+      body: {
+        'product_id': productId,
+        'subject': subject,
+        'details': details,
+      },
+      requiresAuth: true,
+    );
+
+    if (!mounted) return;
+
+    if (response.isSuccess) {
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          contentPadding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 64,
+                height: 64,
+                decoration: BoxDecoration(
+                  color: AppColors.success.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.check_circle_outline, color: AppColors.success, size: 40),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Cảm ơn bạn đã báo cáo!',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Chúng tôi sẽ xem xét báo cáo của bạn và xử lý trong thời gian sớm nhất.',
+                style: TextStyle(color: AppColors.textSecondary, fontSize: 13, height: 1.5),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    elevation: 0,
+                  ),
+                  child: const Text('Đã hiểu'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(response.message.isNotEmpty ? response.message : 'Gửi báo cáo thất bại'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+    }
+  }
+
   String _formatDate(DateTime? date) {
     if (date == null) return '';
     final diff = DateTime.now().difference(date);
@@ -475,6 +797,32 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
               icon: const Icon(Icons.share_outlined, color: Colors.white, size: 20),
               onPressed: () {},
               padding: EdgeInsets.zero,
+            ),
+          ),
+        ),
+        Container(
+          margin: const EdgeInsets.only(right: 8, top: 8),
+          child: CircleAvatar(
+            backgroundColor: Colors.black.withValues(alpha: 0.3),
+            child: PopupMenuButton<String>(
+              icon: const Icon(Icons.more_vert, color: Colors.white, size: 20),
+              padding: EdgeInsets.zero,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              onSelected: (value) {
+                if (value == 'report') _showReportDialog();
+              },
+              itemBuilder: (context) => [
+                const PopupMenuItem(
+                  value: 'report',
+                  child: Row(
+                    children: [
+                      Icon(Icons.flag_outlined, size: 20, color: AppColors.error),
+                      SizedBox(width: 10),
+                      Text('Báo cáo sản phẩm', style: TextStyle(color: AppColors.error)),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ),
         ),
