@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_theme.dart';
 import '../../../core/widgets/common_widgets.dart';
@@ -6,6 +7,7 @@ import '../../auth/data/auth_provider.dart';
 import '../../social/presentation/user_profile_screen.dart';
 import 'package:provider/provider.dart';
 import '../data/chat_provider.dart';
+import 'in_app_web_view_screen.dart';
 
 import 'package:shimmer/shimmer.dart';
 
@@ -418,13 +420,7 @@ class _ChatScreenState extends State<ChatScreen> {
               child: Column(
                 crossAxisAlignment: isMine ? CrossAxisAlignment.end : CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    message.content,
-                    style: TextStyle(
-                      color: isMine ? Colors.white : AppColors.textPrimary,
-                      fontSize: 14,
-                    ),
-                  ),
+                  _buildRichMessageContent(message.content, isMine),
                   const SizedBox(height: 4),
                   Text(
                     message.createdAt != null ? _formatMessageTime(message.createdAt!) : '',
@@ -486,6 +482,83 @@ class _ChatScreenState extends State<ChatScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  // URL regex pattern
+  static final RegExp _urlRegex = RegExp(
+    r'https?://[^\s<>"\)\]]+',
+    caseSensitive: false,
+  );
+
+  /// Builds rich text content with clickable links
+  Widget _buildRichMessageContent(String text, bool isMine) {
+    final matches = _urlRegex.allMatches(text).toList();
+
+    if (matches.isEmpty) {
+      return Text(
+        text,
+        style: TextStyle(
+          color: isMine ? Colors.white : AppColors.textPrimary,
+          fontSize: 14,
+        ),
+      );
+    }
+
+    final spans = <InlineSpan>[];
+    int lastEnd = 0;
+
+    for (final match in matches) {
+      // Add preceding plain text
+      if (match.start > lastEnd) {
+        spans.add(TextSpan(
+          text: text.substring(lastEnd, match.start),
+          style: TextStyle(
+            color: isMine ? Colors.white : AppColors.textPrimary,
+            fontSize: 14,
+          ),
+        ));
+      }
+
+      // Add the URL as a tappable span
+      final url = match.group(0)!;
+      spans.add(TextSpan(
+        text: url,
+        style: TextStyle(
+          color: isMine ? const Color(0xFFB3E5FC) : AppColors.info,
+          fontSize: 14,
+          decoration: TextDecoration.underline,
+          decorationColor: isMine ? const Color(0xFFB3E5FC) : AppColors.info,
+        ),
+        recognizer: TapGestureRecognizer()
+          ..onTap = () => _openInAppBrowser(url),
+      ));
+
+      lastEnd = match.end;
+    }
+
+    // Add trailing plain text
+    if (lastEnd < text.length) {
+      spans.add(TextSpan(
+        text: text.substring(lastEnd),
+        style: TextStyle(
+          color: isMine ? Colors.white : AppColors.textPrimary,
+          fontSize: 14,
+        ),
+      ));
+    }
+
+    return RichText(
+      text: TextSpan(children: spans),
+    );
+  }
+
+  /// Opens a URL in the in-app WebView browser
+  void _openInAppBrowser(String url) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => InAppWebViewScreen(url: url),
       ),
     );
   }
