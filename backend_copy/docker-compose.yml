@@ -1,16 +1,14 @@
-version: "3.8"
-
 services:
   mysql:
     image: mysql:8.0
     container_name: it4788_mysql
     environment:
-      MYSQL_ROOT_PASSWORD: "${DB_ROOT_PASSWORD}"
-      MYSQL_DATABASE: "${DB_NAME}"
-      MYSQL_USER: "${DB_USERNAME}"
-      MYSQL_PASSWORD: "${DB_PASSWORD}"
+      MYSQL_ROOT_PASSWORD: '${DB_ROOT_PASSWORD}'
+      MYSQL_DATABASE: '${DB_NAME}'
+      MYSQL_USER: '${DB_USERNAME}'
+      MYSQL_PASSWORD: '${DB_PASSWORD}'
     ports:
-      - "127.0.0.1:${DB_PORT}:3306"
+      - '127.0.0.1:${DB_PORT}:3306'
     volumes:
       - ./mysql_data:/var/lib/mysql
     restart: always
@@ -18,7 +16,7 @@ services:
   redis:
     image: redis:latest
     ports:
-      - "127.0.0.1:${REDIS_PORT}:6379"
+      - '127.0.0.1:${REDIS_PORT}:6379'
     volumes:
       - ./redis-data:/data
     restart: always
@@ -27,10 +25,40 @@ services:
     build: .
     container_name: it4788_app
     ports:
-      - "${PORT}:${PORT}"
+      - '${PORT}:${PORT}'
     env_file: .env
     volumes:
       - .:/app
       - /app/node_modules
     command: npm run start:dev
     restart: always
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:9.4.2
+    container_name: elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - 'ES_JAVA_OPTS=-Xms512m -Xmx512m'
+    ports:
+      - '9201:9200'
+    volumes:
+      - es_data:/usr/share/elasticsearch/data
+    restart: always
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:9.4.2
+    container_name: kibana
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    ports:
+      - '5601:5601'
+    depends_on:
+      - elasticsearch
+    restart: always
+
+volumes:
+  mysql_data:
+  redis_data:
+  es_data:
+    driver: local

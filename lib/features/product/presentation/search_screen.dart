@@ -347,8 +347,16 @@ class _SearchScreenState extends State<SearchScreen> {
   }
 
   Widget _buildInitialContent() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
+    return RefreshIndicator(
+      onRefresh: () async {
+        await Future.wait([
+          _loadCategories(),
+          _loadSavedSearches(),
+        ]);
+      },
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -461,6 +469,7 @@ class _SearchScreenState extends State<SearchScreen> {
           ),
         ],
       ),
+    ),
     );
   }
 
@@ -473,79 +482,100 @@ class _SearchScreenState extends State<SearchScreen> {
           child: Text(
             'Tìm thấy ${visibleResults.length} sản phẩm',
             style: const TextStyle(color: AppColors.textSecondary),
+  Widget _buildSearchResults() {
+    return RefreshIndicator(
+      onRefresh: () => _runSearch(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Text(
+              'Tìm thấy ${_searchResults.length} sản phẩm',
+              style: const TextStyle(color: AppColors.textSecondary),
+            ),
           ),
-        ),
-        Expanded(
-          child: GridView.builder(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              crossAxisSpacing: 12,
-              mainAxisSpacing: 12,
-              childAspectRatio: 0.65,
+          Expanded(
+            child: GridView.builder(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                crossAxisSpacing: 12,
+                mainAxisSpacing: 12,
+                childAspectRatio: 0.65,
+              ),
+              itemCount: _searchResults.length,
+              itemBuilder: (context, index) {
+                return _buildProductItem(_searchResults[index]);
+              },
             ),
             itemCount: visibleResults.length,
             itemBuilder: (context, index) {
               return _buildProductItem(visibleResults[index]);
             },
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
   Widget _buildProductItem(Product product) {
-    return GestureDetector(
-      onTap: () {
-        Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (context) => ProductDetailScreen(productId: product.id),
-          ),
-        );
-      },
-      child: Card(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            CustomNetworkImage(
-              imageUrl: product.images.isNotEmpty ? product.images.first : null,
-              height: 140,
-              width: double.infinity,
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(12),
-              ),
+    return ProductLikeOverlay(
+      productId: product.id,
+      isLiked: product.isLiked,
+      child: GestureDetector(
+        onTap: () {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (context) => ProductDetailScreen(productId: product.id),
             ),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.all(8),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      product.name,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const Spacer(),
-                    PriceDisplay(
-                      price: product.effectivePrice,
-                      originalPrice: product.hasDiscount ? product.price : null,
-                      showDiscountPercent: product.hasDiscount,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.primary,
-                      ),
-                    ),
-                  ],
+          );
+        },
+        child: Card(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              CustomNetworkImage(
+                imageUrl: product.images.isNotEmpty ? product.images.first : null,
+                height: 140,
+                width: double.infinity,
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(12),
                 ),
               ),
-            ),
-          ],
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.all(8),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        product.name,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const Spacer(),
+                      PriceDisplay(
+                        price: product.effectivePrice,
+                        originalPrice: product.hasDiscount ? product.price : null,
+                        showDiscountPercent: product.hasDiscount,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

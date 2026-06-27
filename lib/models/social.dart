@@ -108,6 +108,7 @@ class AppNotification {
   final String? image;
   final String? avatar;
   final int? productId;
+  final int? objectId;
   final int? group;
   final bool isRead;
   final DateTime? createdAt;
@@ -120,12 +121,54 @@ class AppNotification {
     this.image,
     this.avatar,
     this.productId,
+    this.objectId,
     this.group,
     this.isRead = false,
     this.createdAt,
   });
 
+  AppNotification copyWith({
+    String? id,
+    String? type,
+    String? title,
+    String? message,
+    String? image,
+    String? avatar,
+    int? productId,
+    int? objectId,
+    int? group,
+    bool? isRead,
+    DateTime? createdAt,
+  }) {
+    return AppNotification(
+      id: id ?? this.id,
+      type: type ?? this.type,
+      title: title ?? this.title,
+      message: message ?? this.message,
+      image: image ?? this.image,
+      avatar: avatar ?? this.avatar,
+      productId: productId ?? this.productId,
+      objectId: objectId ?? this.objectId,
+      group: group ?? this.group,
+      isRead: isRead ?? this.isRead,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+
   factory AppNotification.fromJson(Map<String, dynamic> json) {
+    DateTime? parsedDate;
+    final rawDate = json['created_at'];
+    if (rawDate is num) {
+      final ms = rawDate.toInt();
+      if (ms > 1e12) {
+        parsedDate = DateTime.fromMillisecondsSinceEpoch(ms, isUtc: true);
+      } else {
+        parsedDate = DateTime.fromMillisecondsSinceEpoch(ms * 1000, isUtc: true);
+      }
+    } else if (rawDate != null) {
+      parsedDate = DateTime.tryParse(rawDate.toString());
+    }
+
     return AppNotification(
       id: json['id']?.toString() ?? '',
       type: json['type'] ?? '',
@@ -134,12 +177,27 @@ class AppNotification {
       image: json['image'],
       avatar: json['avatar'],
       productId: toInt(json['product_id']),
+      objectId: toInt(json['object_id']),
       group: toInt(json['group']),
       isRead: toBool(json['read'] ?? json['is_read']),
-      createdAt: json['created_at'] != null
-          ? DateTime.tryParse(json['created_at'].toString())
-          : null,
+      createdAt: parsedDate,
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'type': type,
+      'title': title,
+      'message': message,
+      'image': image,
+      'avatar': avatar,
+      'product_id': productId,
+      'object_id': objectId,
+      'group': group,
+      'read': isRead,
+      'created_at': createdAt?.millisecondsSinceEpoch,
+    };
   }
 }
 

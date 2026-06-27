@@ -1,10 +1,13 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_theme.dart';
 import '../../../core/widgets/common_widgets.dart';
 import '../../../models/social.dart';
 import '../../auth/data/auth_provider.dart';
+import '../../social/presentation/user_profile_screen.dart';
 import 'package:provider/provider.dart';
 import '../data/chat_provider.dart';
+import 'in_app_web_view_screen.dart';
 
 import 'package:shimmer/shimmer.dart';
 
@@ -74,35 +77,47 @@ class _ConversationListScreenState extends State<ConversationListScreen> {
 
   Widget _buildConversationItem(BuildContext context, Conversation conversation) {
     return ListTile(
-      leading: Stack(
-        children: [
-          CircleAvatar(
-            radius: 24,
-            backgroundColor: AppColors.primary.withValues(alpha: 0.1),
-            child: conversation.partnerAvatar != null
-                ? ClipOval(
-                    child: CustomNetworkImage(
-                      imageUrl: conversation.partnerAvatar,
-                      width: 48,
-                      height: 48,
-                    ),
-                  )
-                : const Icon(Icons.person, color: AppColors.primary),
-          ),
-          if (conversation.lastMessageUnread == true)
-            Positioned(
-              right: 0,
-              top: 0,
-              child: Container(
-                padding: const EdgeInsets.all(4),
-                decoration: const BoxDecoration(
-                  color: AppColors.error,
-                  shape: BoxShape.circle,
-                ),
-                constraints: const BoxConstraints(minWidth: 8, minHeight: 8),
+      leading: GestureDetector(
+        onTap: () {
+          final partnerId = conversation.partnerId;
+          if (partnerId != null && partnerId.isNotEmpty) {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (context) => UserProfileScreen(userId: partnerId),
               ),
+            );
+          }
+        },
+        child: Stack(
+          children: [
+            CircleAvatar(
+              radius: 24,
+              backgroundColor: AppColors.primary.withValues(alpha: 0.1),
+              child: conversation.partnerAvatar != null
+                  ? ClipOval(
+                      child: CustomNetworkImage(
+                        imageUrl: conversation.partnerAvatar,
+                        width: 48,
+                        height: 48,
+                      ),
+                    )
+                  : const Icon(Icons.person, color: AppColors.primary),
             ),
-        ],
+            if (conversation.lastMessageUnread == true)
+              Positioned(
+                right: 0,
+                top: 0,
+                child: Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: const BoxDecoration(
+                    color: AppColors.error,
+                    shape: BoxShape.circle,
+                  ),
+                  constraints: const BoxConstraints(minWidth: 8, minHeight: 8),
+                ),
+              ),
+          ],
+        ),
       ),
       title: Text(
         conversation.partnerName ?? 'Người dùng',
@@ -249,24 +264,36 @@ class _ChatScreenState extends State<ChatScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Row(
-          children: [
-            CircleAvatar(
-              radius: 16,
-              backgroundColor: AppColors.primary.withValues(alpha: 0.1),
-              child: _effectivePartnerAvatar != null
-                  ? ClipOval(
-                      child: CustomNetworkImage(
-                        imageUrl: _effectivePartnerAvatar,
-                        width: 32,
-                        height: 32,
-                      ),
-                    )
-                  : const Icon(Icons.person, color: AppColors.primary, size: 16),
-            ),
-            const SizedBox(width: 8),
-            Text(_effectivePartnerName ?? 'Người dùng'),
-          ],
+        title: GestureDetector(
+          onTap: () {
+            final partnerId = _effectivePartnerId;
+            if (partnerId != null) {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => UserProfileScreen(userId: partnerId.toString()),
+                ),
+              );
+            }
+          },
+          child: Row(
+            children: [
+              CircleAvatar(
+                radius: 16,
+                backgroundColor: AppColors.primary.withValues(alpha: 0.1),
+                child: _effectivePartnerAvatar != null
+                    ? ClipOval(
+                        child: CustomNetworkImage(
+                          imageUrl: _effectivePartnerAvatar,
+                          width: 32,
+                          height: 32,
+                        ),
+                      )
+                    : const Icon(Icons.person, color: AppColors.primary, size: 16),
+              ),
+              const SizedBox(width: 8),
+              Text(_effectivePartnerName ?? 'Người dùng'),
+            ],
+          ),
         ),
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
@@ -336,48 +363,77 @@ class _ChatScreenState extends State<ChatScreen> {
   Widget _buildMessageBubble(Message message, bool isMine) {
     return Align(
       alignment: isMine ? Alignment.centerRight : Alignment.centerLeft,
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 8),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        constraints: BoxConstraints(
-          maxWidth: MediaQuery.of(context).size.width * 0.7,
-        ),
-        decoration: BoxDecoration(
-          color: isMine ? AppColors.primary : Colors.white,
-          borderRadius: BorderRadius.only(
-            topLeft: const Radius.circular(12),
-            topRight: const Radius.circular(12),
-            bottomLeft: Radius.circular(isMine ? 12 : 4),
-            bottomRight: Radius.circular(isMine ? 4 : 12),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          if (!isMine) ...[
+            GestureDetector(
+              onTap: () {
+                if (message.senderId.isNotEmpty) {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => UserProfileScreen(userId: message.senderId),
+                    ),
+                  );
+                }
+              },
+              child: CircleAvatar(
+                radius: 14,
+                backgroundColor: AppColors.primary.withValues(alpha: 0.1),
+                child: _effectivePartnerAvatar != null
+                    ? ClipOval(
+                        child: CustomNetworkImage(
+                          imageUrl: _effectivePartnerAvatar,
+                          width: 28,
+                          height: 28,
+                        ),
+                      )
+                    : const Icon(Icons.person, color: AppColors.primary, size: 14),
+              ),
+            ),
+            const SizedBox(width: 6),
+          ],
+          Flexible(
+            child: Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              constraints: BoxConstraints(
+                maxWidth: MediaQuery.of(context).size.width * 0.7,
+              ),
+              decoration: BoxDecoration(
+                color: isMine ? AppColors.primary : Colors.white,
+                borderRadius: BorderRadius.only(
+                  topLeft: const Radius.circular(12),
+                  topRight: const Radius.circular(12),
+                  bottomLeft: Radius.circular(isMine ? 12 : 4),
+                  bottomRight: Radius.circular(isMine ? 4 : 12),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.05),
+                    blurRadius: 4,
+                    offset: const Offset(0, 1),
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: isMine ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                children: [
+                  _buildRichMessageContent(message.content, isMine),
+                  const SizedBox(height: 4),
+                  Text(
+                    message.createdAt != null ? _formatMessageTime(message.createdAt!) : '',
+                    style: TextStyle(
+                      color: isMine ? Colors.white70 : AppColors.textHint,
+                      fontSize: 10,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 4,
-              offset: const Offset(0, 1),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: isMine ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-          children: [
-            Text(
-              message.content,
-              style: TextStyle(
-                color: isMine ? Colors.white : AppColors.textPrimary,
-                fontSize: 14,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              message.createdAt != null ? _formatMessageTime(message.createdAt!) : '',
-              style: TextStyle(
-                color: isMine ? Colors.white70 : AppColors.textHint,
-                fontSize: 10,
-              ),
-            ),
-          ],
-        ),
+        ],
       ),
     );
   }
@@ -426,6 +482,83 @@ class _ChatScreenState extends State<ChatScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  // URL regex pattern
+  static final RegExp _urlRegex = RegExp(
+    r'https?://[^\s<>"\)\]]+',
+    caseSensitive: false,
+  );
+
+  /// Builds rich text content with clickable links
+  Widget _buildRichMessageContent(String text, bool isMine) {
+    final matches = _urlRegex.allMatches(text).toList();
+
+    if (matches.isEmpty) {
+      return Text(
+        text,
+        style: TextStyle(
+          color: isMine ? Colors.white : AppColors.textPrimary,
+          fontSize: 14,
+        ),
+      );
+    }
+
+    final spans = <InlineSpan>[];
+    int lastEnd = 0;
+
+    for (final match in matches) {
+      // Add preceding plain text
+      if (match.start > lastEnd) {
+        spans.add(TextSpan(
+          text: text.substring(lastEnd, match.start),
+          style: TextStyle(
+            color: isMine ? Colors.white : AppColors.textPrimary,
+            fontSize: 14,
+          ),
+        ));
+      }
+
+      // Add the URL as a tappable span
+      final url = match.group(0)!;
+      spans.add(TextSpan(
+        text: url,
+        style: TextStyle(
+          color: isMine ? const Color(0xFFB3E5FC) : AppColors.info,
+          fontSize: 14,
+          decoration: TextDecoration.underline,
+          decorationColor: isMine ? const Color(0xFFB3E5FC) : AppColors.info,
+        ),
+        recognizer: TapGestureRecognizer()
+          ..onTap = () => _openInAppBrowser(url),
+      ));
+
+      lastEnd = match.end;
+    }
+
+    // Add trailing plain text
+    if (lastEnd < text.length) {
+      spans.add(TextSpan(
+        text: text.substring(lastEnd),
+        style: TextStyle(
+          color: isMine ? Colors.white : AppColors.textPrimary,
+          fontSize: 14,
+        ),
+      ));
+    }
+
+    return RichText(
+      text: TextSpan(children: spans),
+    );
+  }
+
+  /// Opens a URL in the in-app WebView browser
+  void _openInAppBrowser(String url) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => InAppWebViewScreen(url: url),
       ),
     );
   }
