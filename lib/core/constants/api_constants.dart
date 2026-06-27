@@ -50,6 +50,7 @@ class ApiConstants {
   static const String setReadMessage = '/conversation/set_read_message';
 
   static const String getNotification = '/notification/get_notification';
+  static const String addNotification = '/notification/add_notification';
   static const String setReadNotification = '/notification/set_read_notification';
 
   static const String getPushSetting = '/push_settings/get_push_setting';

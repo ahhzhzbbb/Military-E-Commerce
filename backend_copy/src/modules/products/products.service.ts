@@ -1,7 +1,10 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, OnModuleInit } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Product } from './entities/product.entity';
+import { DevToken } from '../dev_tokens/entities/dev-token.entity';
+import { getApps } from 'firebase-admin/app';
+import { getMessaging, MulticastMessage } from 'firebase-admin/messaging';
 import { ProductVariant } from './entities/product_variant.entity';
 import { CreateProductDto } from './dto/create_product.dto';
 import { Comment } from './entities/comment.entity';
@@ -15,9 +18,11 @@ import { Brand } from './entities/brand.entity';
 import { Category } from './entities/category.entity';
 import { Address } from '../orders/entities/address.entity';
 import { UserBlock } from '../blocks/entities/user-block.entity';
+import { NotificationsService } from '../notifications/notifications.service';
+import { ProductsSearchService } from './products-search.service';
 
 @Injectable()
-export class ProductsService {
+export class ProductsService implements OnModuleInit {
   constructor(
     @InjectRepository(Product)
     private readonly productRepo: Repository<Product>,
@@ -48,7 +53,53 @@ export class ProductsService {
 
     @InjectRepository(UserBlock)
     private readonly userBlockRepo: Repository<UserBlock>,
+
+    @InjectRepository(DevToken)
+    private readonly devTokenRepo: Repository<DevToken>,
+
+    private readonly notificationsService: NotificationsService,
+    private readonly productsSearchService: ProductsSearchService,
   ) {}
+
+  private async sendPushNotification(userId: number, title?: string, body?: string, data?: any) {
+    try {
+      if (!getApps().length) return;
+
+      const tokens = await this.devTokenRepo.find({
+        where: { user_id: userId, is_active: true }
+      });
+
+      if (tokens.length === 0) return;
+
+      const deviceTokens = tokens.map(t => t.devtoken);
+      
+      const message: MulticastMessage = {
+        tokens: deviceTokens,
+        data: data ? Object.fromEntries(Object.entries(data).map(([k, v]) => [k, String(v)])) : {},
+      };
+
+      if (title || body) {
+        message.notification = {
+          title: title || '',
+          body: body || '',
+        };
+      }
+      
+      const response = await getMessaging().sendEachForMulticast(message);
+      console.log(`FCM notification sent to user ${userId}, success: ${response.successCount}, failure: ${response.failureCount}`);
+    } catch (error) {
+      console.error(`Failed to send FCM notification to user ${userId}:`, error);
+    }
+  }
+
+  async onModuleInit() {
+    try {
+      await this.productsSearchService.createIndex();
+      console.log('Elasticsearch index initialized successfully');
+    } catch (err) {
+      console.error('Failed to initialize Elasticsearch index:', err);
+    }
+  }
 
   async isUserBlockedWithSeller(currentUserId?: number, sellerId?: number) {
     if (!currentUserId || !sellerId) return false;
@@ -161,6 +212,12 @@ export class ProductsService {
       );
 
       await this.variantRepo.save(variantEntities);
+
+      // Index to Elasticsearch
+      this.productsSearchService.indexProduct(product).catch((err) => {
+        console.error('Failed to index new product to Elasticsearch:', err);
+      });
+
       const { title, ...restProduct } = product;
       return {
         code: '1000',
@@ -383,6 +440,12 @@ export class ProductsService {
       if (!updateProduct) {
         return APP_RESPONSE.PRODUCT_NOT_EXISTED;
       }
+
+      // Update index in Elasticsearch
+      this.productsSearchService.indexProduct(updateProduct).catch((err) => {
+        console.error('Failed to index updated product to Elasticsearch:', err);
+      });
+
       const { title, ...restProduct } = updateProduct;
       return {
         code: '1000',
@@ -418,6 +481,12 @@ export class ProductsService {
     }
     await this.variantRepo.softDelete({ product: { id: Number(id) } });
     await this.productRepo.softDelete(id);
+
+    // Remove from Elasticsearch
+    this.productsSearchService.removeProduct(id).catch((err) => {
+      console.error('Failed to remove deleted product from Elasticsearch:', err);
+    });
+
     return APP_RESPONSE.OK;
   }
   //get_user_listing
@@ -514,7 +583,7 @@ export class ProductsService {
     };
   }
 
-  async getCategories(parentId?: number) {
+  async getCategories(parentId?: number, index?: number, count?: number) {
     const qb = this.categoryRepo.createQueryBuilder('category');
 
     if (parentId !== undefined) {
@@ -522,6 +591,10 @@ export class ProductsService {
     }
 
     qb.orderBy('category.sort', 'ASC').addOrderBy('category.id', 'ASC');
+
+    if (index !== undefined && count !== undefined) {
+      qb.skip(index).take(count);
+    }
 
     return await qb.getMany();
   }
@@ -668,6 +741,8 @@ export class ProductsService {
       const commentCount = p.comments ? p.comments.length : 0;
       const variants = p.variants || [];
       const isStock = variants.some((v: any) => Number(v.stock) > 0);
+      const isLiked =
+        p.likes?.some((like: any) => Number(like.user_id) === Number(authUserId)) ?? false;
 
       return {
         id: String(p.id),
@@ -681,23 +756,20 @@ export class ProductsService {
         video: p.videos && p.videos.length > 0 ? p.videos[0] : null,
         like: String(likeCount),
         comment: String(commentCount),
-        is_liked: authUserId ? (p.likes || []).some((l: any) => l.user_id === authUserId) : false,
+        is_liked: isLiked,
         is_stock: isStock,
-
         brand: p.brand
           ? {
               id: String(p.brand.id),
-              name: p.brand.name,
+              brand_name: p.brand.name,
             }
           : null,
-
         category: p.category
           ? {
               id: String(p.category.id),
               name: p.category.name,
             }
           : null,
-
         variants: variants.map((v: any) => ({
           id: String(v.id),
           size: v.size,
@@ -711,7 +783,7 @@ export class ProductsService {
   async getProductDetail(productId: number, authUserId?: number) {
     const product = await this.productRepo.findOne({
       where: { id: productId },
-      relations: ['seller', 'variants', 'likes', 'comments', 'category'],
+      relations: ['seller', 'variants', 'likes', 'comments', 'category', 'brand', 'ship_from'],
     });
 
     if (!product) {
@@ -755,9 +827,14 @@ export class ProductsService {
         size: v.size,
         color: v.color,
         stock: String(v.stock ?? 0),
+        weight: v.weight ? String(v.weight) : '0',
       })),
-      brand:
-        product.brand_id !== undefined && product.brand_id !== null
+      brand: product.brand
+        ? {
+            id: String(product.brand.id),
+            brand_name: product.brand.name,
+          }
+        : product.brand_id !== undefined && product.brand_id !== null
           ? {
               id: String(product.brand_id),
               brand_name: String(product.brand_id),
@@ -768,6 +845,8 @@ export class ProductsService {
             id: String(product.seller.id),
             username: product.seller.username || '',
             avatar: product.seller.avatar || '',
+            cover_image: product.seller.cover_image || '',
+            cover_image_web: product.seller.cover_image_web,
             fullname: product.seller.fullname || '',
           }
         : null,
@@ -778,6 +857,7 @@ export class ProductsService {
             parent_id: product.category.parent_id ?? 0,
           }
         : null,
+      ships_from: product.ship_from?.full_address || '',
       can_edit: canEdit,
       best_offers: [],
       messages: [],
@@ -796,6 +876,8 @@ export class ProductsService {
         'comment.created_at AS created_at',
         'user.username AS username',
         'user.avatar AS avatar',
+        'user.cover_image AS cover_image',
+        'user.cover_image_web AS cover_image_web'
       ])
       .where('comment.product_id = :productId', { productId })
       .orderBy('comment.created_at', 'DESC')
@@ -821,6 +903,14 @@ export class ProductsService {
     index: number,
     count: number,
   ) {
+    const product = await this.productRepo.findOne({
+      where: { id: productId },
+    });
+
+    if (!product) {
+      throw new Error('Product not found');
+    }
+
     const comment = this.commentRepo.create({
       product_id: productId,
       user_id: userId,
@@ -829,17 +919,39 @@ export class ProductsService {
 
     await this.commentRepo.save(comment);
 
-    const comments = await this.commentRepo.find({
-      where: { product_id: productId },
-      order: { created_at: 'DESC' },
-      skip: index,
-      take: count,
-    });
+    if (product.seller_id !== userId) {
+      const notificationResponse = await this.notificationsService.addNotification(userId, {
+        type: 'comment_product',
+        object_id: product.id,
+        title: `Có người vừa bình luận sản phẩm "${product.title}" của bạn`,
+        user_id: product.seller_id,
+      });
 
-    return comments;
+      let notificationIdStr = '';
+      if (notificationResponse.code == '1000' && notificationResponse.data) {
+        notificationIdStr = String(notificationResponse.data.id);
+      }
+
+      await this.sendPushNotification(
+        product.seller_id,
+        "Thông báo mới",
+        `Có người vừa bình luận sản phẩm "${product.title}" của bạn`,
+        { type: 'comment_product', object_id: String(product.id), notification_id: notificationIdStr }
+      );
+    }
+
+    return await this.getCommentsProduct(productId, index, count);
   }
 
   async likeProduct(productId: number, userId: number) {
+    const product = await this.productRepo.findOne({
+      where: { id: productId },
+    });
+
+    if (!product) {
+      throw new Error('Product not found');
+    }
+
     const existingLike = await this.likeRepo.findOne({
       where: {
         product_id: productId,
@@ -860,6 +972,31 @@ export class ProductsService {
 
       await this.likeRepo.save(newLike);
       is_liked = true;
+
+      if (product.seller_id !== userId) {
+        const notificationResponse = await this.notificationsService.addNotification(userId, {
+          type: 'like_product',
+          object_id: product.id,
+          title: `Có người vừa thích sản phẩm "${product.title}" của bạn`,
+          user_id: product.seller_id,
+        });
+
+        let notificationIdStr = '';
+        if (notificationResponse.code === '1000' && notificationResponse.data) {
+          notificationIdStr = String(notificationResponse.data.id);
+        }
+
+        await this.sendPushNotification(
+          product.seller_id,
+          'Thông báo mới',
+          `Có người vừa thích sản phẩm "${product.title}" của bạn`,
+          {
+            type: 'like_product',
+            object_id: String(product.id),
+            notification_id: notificationIdStr,
+          },
+        );
+      }
     }
 
     const like_count = await this.likeRepo.count({
@@ -913,6 +1050,40 @@ export class ProductsService {
     index: number,
     count: number,
   ) {
+    if (keyword !== undefined && keyword.trim() !== '') {
+      try {
+        const matchedIds = await this.productsSearchService.search(
+          keyword,
+          categoryId,
+          brandId,
+          priceMin,
+          priceMax,
+          index,
+          count,
+        );
+
+        if (matchedIds.length === 0) {
+          return [];
+        }
+
+        // Fetch matched products from MySQL database
+        const products = await this.productRepo.createQueryBuilder('product')
+          .where('product.id IN (:...matchedIds)', { matchedIds })
+          .getMany();
+
+        // Sort products based on the relevance score order returned by Elasticsearch
+        return matchedIds
+          .map((id) => products.find((p) => p.id === id))
+          .filter(Boolean);
+      } catch (error) {
+        console.error(
+          'Elasticsearch search failed, falling back to database query:',
+          error,
+        );
+      }
+    }
+
+    // Fallback or no-keyword query using MySQL database directly
     const qb = this.productRepo.createQueryBuilder('product');
 
     if (keyword !== undefined && keyword.trim() !== '') {
