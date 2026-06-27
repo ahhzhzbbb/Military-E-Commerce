@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:military_e_commerce/core/cache/avatar_cache.dart';
 import 'package:military_e_commerce/core/constants/app_theme.dart';
 import 'package:military_e_commerce/core/widgets/common_widgets.dart';
 import 'package:shimmer/shimmer.dart';
@@ -72,6 +73,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       builder: (context, auth, child) {
         final user = auth.user;
         if (user == null) return const SizedBox.shrink();
+        final avatar = user.avatar;
 
         return Container(
           padding: const EdgeInsets.all(16),
@@ -102,12 +104,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         CircleAvatar(
                           radius: 40,
                           backgroundColor: Colors.white24,
-                          child: user.avatar != null
+                          child: avatar != null && avatar.isNotEmpty
                               ? ClipOval(
                                   child: CustomNetworkImage(
-                                    imageUrl: user.avatar,
+                                    imageUrl: avatar,
                                     width: 80,
                                     height: 80,
+                                    persistentCacheKey:
+                                        AvatarCache.currentUserKey(user.id),
                                   ),
                                 )
                               : const Icon(Icons.person, size: 40, color: Colors.white),

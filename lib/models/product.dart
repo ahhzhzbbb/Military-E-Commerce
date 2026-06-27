@@ -57,11 +57,24 @@ class Product {
   });
 
   factory Product.fromJson(Map<String, dynamic> json) {
+    final images = _firstStringList([
+      json['image'],
+      json['image_urls'],
+      json['images'],
+      json['thumbnail'],
+      json['image_url'],
+    ]);
+    final videos = _firstStringList([
+      json['video'],
+      json['videos'],
+      json['video_url'],
+    ]);
+
     return Product(
       id: toInt(json['id']) ?? 0,
       name: json['name']?.toString() ?? json['title']?.toString() ?? '',
       price: toDouble(json['price']) ?? 0,
-      priceDiscount: toDouble(json['price_discount']),
+      priceDiscount: toDouble(json['price_discount'] ?? json['price_new']),
       described: json['described']?.toString() ?? json['description']?.toString(),
       created: json['created'] != null || json['created_at'] != null
           ? DateTime.tryParse((json['created'] ?? json['created_at']).toString())
@@ -72,16 +85,8 @@ class Product {
       isLiked: toBool(json['is_liked']),
       canEdit: toBool(json['can_edit']),
       sellerId: json['seller_id']?.toString(),
-      images: (json['image'] is List)
-          ? List<String>.from(json['image'])
-          : (json['image_urls'] is List)
-              ? List<String>.from(json['image_urls'])
-              : <String>[],
-      videos: (json['video'] is List)
-          ? List<String>.from(json['video'])
-          : (json['videos'] is List)
-              ? (json['videos'] as List).map((v) => v is Map ? (v['url']?.toString() ?? '') : v.toString()).toList()
-              : <String>[],
+      images: images,
+      videos: videos,
       sizes: (json['size'] as List<dynamic>? ?? [])
           .map((e) => ProductSize.fromJson(e))
           .toList(),
@@ -97,6 +102,42 @@ class Product {
       bestOffers: json['best_offers'] ?? [],
       messages: json['messages'] ?? [],
     );
+  }
+
+  static List<String> _firstStringList(List<dynamic> values) {
+    for (final value in values) {
+      final items = _stringList(value);
+      if (items.isNotEmpty) return items;
+    }
+    return <String>[];
+  }
+
+  static List<String> _stringList(dynamic value) {
+    if (value == null) return <String>[];
+    if (value is List) {
+      return value
+          .map(_stringFromMediaValue)
+          .whereType<String>()
+          .toList(growable: false);
+    }
+
+    final item = _stringFromMediaValue(value);
+    return item == null ? <String>[] : <String>[item];
+  }
+
+  static String? _stringFromMediaValue(dynamic value) {
+    final map = asMap(value);
+    if (map != null) {
+      for (final key in ['url', 'image_url', 'video_url', 'image', 'path']) {
+        final text = asString(map[key]);
+        if (text != null) return text;
+      }
+      return null;
+    }
+
+    final text = asString(value);
+    if (text == null || text.toLowerCase() == 'null') return null;
+    return text;
   }
 
   Map<String, dynamic> toJson() {

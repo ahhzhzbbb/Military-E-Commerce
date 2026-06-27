@@ -62,20 +62,47 @@ class User {
     return null;
   }
 
+  static String? _stringValue(dynamic value) {
+    if (value == null) return null;
+    final text = value.toString().trim();
+    if (text.isEmpty || text.toLowerCase() == 'null') return null;
+    return text;
+  }
+
+  static String? _mediaUrl(dynamic value) {
+    if (value is Map) {
+      for (final key in ['url', 'avatar', 'image', 'image_url']) {
+        final text = _stringValue(value[key]);
+        if (text != null) return text;
+      }
+      return null;
+    }
+    return _stringValue(value);
+  }
+
   factory User.fromJson(Map<String, dynamic> json) {
     return User(
       id: json['id']?.toString() ?? '',
-      email: json['email'],
-      phone: json['phone'] ?? json['phone_number'] ?? json['phonenumber'],
-      username: json['username'] ?? json['name'],
-      avatar: json['avatar'] ?? json['image'],
-      coverImage: json['cover_image'] ?? json['cover_image_web'],
-      address: json['address'],
-      city: json['city'],
-      status: json['status'],
-      fullname: json['fullname'] ?? json['full_name'],
-      firstname: json['firstname'] ?? json['first_name'],
-      lastname: json['lastname'] ?? json['last_name'],
+      email: _stringValue(json['email']),
+      phone:
+          _stringValue(json['phone']) ??
+          _stringValue(json['phone_number']) ??
+          _stringValue(json['phonenumber']),
+      username: _stringValue(json['username']) ?? _stringValue(json['name']),
+      avatar:
+          _mediaUrl(json['avatar']) ??
+          _mediaUrl(json['avatar_url']) ??
+          _mediaUrl(json['image']),
+      coverImage:
+          _mediaUrl(json['cover_image']) ?? _mediaUrl(json['cover_image_web']),
+      address: _stringValue(json['address']),
+      city: _stringValue(json['city']),
+      status: _stringValue(json['status']),
+      fullname: _stringValue(json['fullname']) ?? _stringValue(json['full_name']),
+      firstname:
+          _stringValue(json['firstname']) ?? _stringValue(json['first_name']),
+      lastname:
+          _stringValue(json['lastname']) ?? _stringValue(json['last_name']),
       followed: _toBool(json['followed']),
       isBlocked: _toBool(json['is_blocked']),
       followerCount: _toInt(json['follower_count']),

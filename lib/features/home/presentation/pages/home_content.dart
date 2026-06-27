@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:military_e_commerce/features/product/presentation/search_screen.dart';
 import 'package:military_e_commerce/features/social/presentation/user_profile_screen.dart';
 import 'package:provider/provider.dart';
+import '../../../../core/cache/avatar_cache.dart';
 import '../../../../core/constants/app_theme.dart';
 import '../../../home/data/product_provider.dart';
 import '../../../../core/widgets/common_widgets.dart';
@@ -101,6 +102,7 @@ class _HomeContentState extends State<HomeContent> {
     return Consumer<AuthProvider>(
       builder: (context, auth, _) {
         final name = auth.user?.username ?? 'Chiến hữu';
+        final avatar = auth.user?.avatar;
         return Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Row(
@@ -143,12 +145,15 @@ class _HomeContentState extends State<HomeContent> {
                 child: CircleAvatar(
                   radius: 22,
                   backgroundColor: AppColors.primary.withValues(alpha: 0.1),
-                  child: auth.user?.avatar != null
+                  child: avatar != null && avatar.isNotEmpty
                       ? ClipOval(
                           child: CustomNetworkImage(
-                            imageUrl: auth.user!.avatar,
+                            imageUrl: avatar,
                             width: 44,
                             height: 44,
+                            persistentCacheKey: AvatarCache.currentUserKey(
+                              auth.user!.id,
+                            ),
                           ),
                         )
                       : const Icon(

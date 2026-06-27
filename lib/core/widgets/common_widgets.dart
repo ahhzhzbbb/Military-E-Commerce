@@ -1,16 +1,20 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:shimmer/shimmer.dart';
+import '../api/api_client.dart';
+import '../cache/avatar_cache.dart';
 import '../constants/app_theme.dart';
 import '../constants/api_constants.dart';
-import '../api/api_client.dart';
 
-class CustomNetworkImage extends StatelessWidget {
+class CustomNetworkImage extends StatefulWidget {
   final String? imageUrl;
   final double? width;
   final double? height;
   final BoxFit fit;
   final BorderRadius? borderRadius;
+  final String? persistentCacheKey;
 
   const CustomNetworkImage({
     super.key,
@@ -19,23 +23,106 @@ class CustomNetworkImage extends StatelessWidget {
     this.height,
     this.fit = BoxFit.cover,
     this.borderRadius,
+    this.persistentCacheKey,
   });
 
   @override
+  State<CustomNetworkImage> createState() => _CustomNetworkImageState();
+}
+
+class _CustomNetworkImageState extends State<CustomNetworkImage> {
+  Uint8List? _cachedBytes;
+  String? _cachedImageUrl;
+  bool _isCachingImage = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCachedImage();
+  }
+
+  @override
+  void didUpdateWidget(CustomNetworkImage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.persistentCacheKey != widget.persistentCacheKey ||
+        oldWidget.imageUrl != widget.imageUrl) {
+      if (oldWidget.persistentCacheKey != widget.persistentCacheKey) {
+        _cachedImageUrl = null;
+      }
+      _loadCachedImage();
+    }
+  }
+
+  Future<void> _loadCachedImage() async {
+    final key = widget.persistentCacheKey;
+    if (key == null || key.isEmpty) {
+      if (mounted && _cachedBytes != null) {
+        setState(() => _cachedBytes = null);
+      }
+      return;
+    }
+
+    final bytes = await AvatarCache.read(key, sourceUrl: widget.imageUrl);
+    if (mounted) {
+      setState(() => _cachedBytes = bytes);
+    }
+  }
+
+  Future<void> _cacheImageFromUrl(String url) async {
+    final key = widget.persistentCacheKey;
+    if (key == null || key.isEmpty || url.isEmpty) return;
+    if (_cachedImageUrl == url || _isCachingImage) return;
+
+    try {
+      _isCachingImage = true;
+      await AvatarCache.cacheFromUrl(key, url);
+      _cachedImageUrl = url;
+      await _loadCachedImage();
+    } catch (_) {
+      // Best-effort cache warming. The network image can still render normally.
+    } finally {
+      _isCachingImage = false;
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    if (imageUrl == null || imageUrl!.isEmpty) {
+    if (widget.imageUrl == null || widget.imageUrl!.isEmpty) {
+      if (_cachedBytes != null) return _buildCachedImage();
       return _buildPlaceholder();
     }
 
     return ClipRRect(
-      borderRadius: borderRadius ?? BorderRadius.zero,
+      borderRadius: widget.borderRadius ?? BorderRadius.zero,
       child: CachedNetworkImage(
-        imageUrl: imageUrl!,
-        width: width,
-        height: height,
-        fit: fit,
+        imageUrl: widget.imageUrl!,
+        width: widget.width,
+        height: widget.height,
+        fit: widget.fit,
         placeholder: (context, url) => _buildShimmer(),
-        errorWidget: (context, url, error) => _buildPlaceholder(),
+        imageBuilder: (context, imageProvider) {
+          _cacheImageFromUrl(widget.imageUrl!);
+          return Image(
+            image: imageProvider,
+            width: widget.width,
+            height: widget.height,
+            fit: widget.fit,
+          );
+        },
+        errorWidget: (context, url, error) =>
+            _cachedBytes != null ? _buildCachedImage() : _buildPlaceholder(),
+      ),
+    );
+  }
+
+  Widget _buildCachedImage() {
+    return ClipRRect(
+      borderRadius: widget.borderRadius ?? BorderRadius.zero,
+      child: Image.memory(
+        _cachedBytes!,
+        width: widget.width,
+        height: widget.height,
+        fit: widget.fit,
       ),
     );
   }
@@ -45,8 +132,8 @@ class CustomNetworkImage extends StatelessWidget {
       baseColor: AppColors.shimmerBase,
       highlightColor: AppColors.shimmerHighlight,
       child: Container(
-        width: width,
-        height: height,
+        width: widget.width,
+        height: widget.height,
         color: Colors.white,
       ),
     );
@@ -54,8 +141,8 @@ class CustomNetworkImage extends StatelessWidget {
 
   Widget _buildPlaceholder() {
     return Container(
-      width: width,
-      height: height,
+      width: widget.width,
+      height: widget.height,
       color: AppColors.divider.withValues(alpha: 0.3),
       child: Center(
         child: Column(
@@ -64,9 +151,9 @@ class CustomNetworkImage extends StatelessWidget {
             Icon(
               Icons.image_outlined,
               color: AppColors.textHint.withValues(alpha: 0.6),
-              size: (height != null && height! < 80) ? 24 : 40,
+              size: (widget.height != null && widget.height! < 80) ? 24 : 40,
             ),
-            if (height == null || height! > 80)
+            if (widget.height == null || widget.height! > 80)
               const SizedBox(height: 4),
           ],
         ),
