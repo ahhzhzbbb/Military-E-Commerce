@@ -474,15 +474,6 @@ class _SearchScreenState extends State<SearchScreen> {
   }
 
   Widget _buildSearchResults(List<Product> visibleResults) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.all(16),
-          child: Text(
-            'Tìm thấy ${visibleResults.length} sản phẩm',
-            style: const TextStyle(color: AppColors.textSecondary),
-  Widget _buildSearchResults() {
     return RefreshIndicator(
       onRefresh: () => _runSearch(),
       child: Column(
@@ -491,7 +482,7 @@ class _SearchScreenState extends State<SearchScreen> {
           Padding(
             padding: const EdgeInsets.all(16),
             child: Text(
-              'Tìm thấy ${_searchResults.length} sản phẩm',
+              'Tìm thấy ${visibleResults.length} sản phẩm',
               style: const TextStyle(color: AppColors.textSecondary),
             ),
           ),
@@ -505,15 +496,11 @@ class _SearchScreenState extends State<SearchScreen> {
                 mainAxisSpacing: 12,
                 childAspectRatio: 0.65,
               ),
-              itemCount: _searchResults.length,
+              itemCount: visibleResults.length,
               itemBuilder: (context, index) {
-                return _buildProductItem(_searchResults[index]);
+                return _buildProductItem(visibleResults[index]);
               },
             ),
-            itemCount: visibleResults.length,
-            itemBuilder: (context, index) {
-              return _buildProductItem(visibleResults[index]);
-            },
           ),
         ],
       ),
