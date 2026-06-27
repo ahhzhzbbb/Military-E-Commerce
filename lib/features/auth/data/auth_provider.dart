@@ -1,16 +1,20 @@
+import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:military_e_commerce/core/api/api_client.dart';
 import 'package:military_e_commerce/core/api/api_data.dart';
 import 'package:military_e_commerce/core/cache/api_cache.dart';
+import 'package:military_e_commerce/core/cache/avatar_cache.dart';
 import 'package:military_e_commerce/core/constants/api_constants.dart';
 import 'package:military_e_commerce/models/models.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 enum AuthStatus { initial, loading, authenticated, unauthenticated, error }
 
 class AuthProvider extends ChangeNotifier {
   final ApiClient _apiClient = ApiClient();
+  static const _cachedUserKey = 'auth_user_cache_v1';
 
   AuthStatus _status = AuthStatus.initial;
   User? _user;
@@ -23,8 +27,9 @@ class AuthProvider extends ChangeNotifier {
 
   String? _stringValue(dynamic value) {
     if (value == null) return null;
-    final text = value.toString();
-    return text.isEmpty ? null : text;
+    final text = value.toString().trim();
+    if (text.isEmpty || text.toLowerCase() == 'null') return null;
+    return text;
   }
 
   String? _extractToken(Map<String, dynamic> data) {
@@ -43,7 +48,40 @@ class AuthProvider extends ChangeNotifier {
     final userMap = ApiData.mapFrom(data, ['user', 'profile']);
     if (userMap == null || userMap.isEmpty) return null;
     if (userMap.length == 1 && userMap.containsKey('token')) return null;
-    return User.fromJson(userMap);
+    final userId = _stringValue(userMap['id'] ?? userMap['user_id']);
+    if (userId == null) return null;
+    return User.fromJson({...userMap, 'id': userId});
+  }
+
+  Future<void> _cacheUser(User user) async {
+    if (user.id.isEmpty) return;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_cachedUserKey, jsonEncode(user.toJson()));
+  }
+
+  Future<User?> _loadCachedUser() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_cachedUserKey);
+    if (raw == null || raw.isEmpty) return null;
+
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is! Map) return null;
+      final user = User.fromJson(Map<String, dynamic>.from(decoded));
+      if (user.id.isEmpty) {
+        await prefs.remove(_cachedUserKey);
+        return null;
+      }
+      return user;
+    } catch (_) {
+      await prefs.remove(_cachedUserKey);
+      return null;
+    }
+  }
+
+  Future<void> _clearCachedUser() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_cachedUserKey);
   }
 
   Future<User?> _fetchCurrentUser() async {
@@ -83,8 +121,15 @@ class AuthProvider extends ChangeNotifier {
   Future<void> checkAuthStatus() async {
     await _apiClient.loadTokens();
     if (_apiClient.isLoggedIn) {
-      _user = await _fetchCurrentUser();
-      _status = AuthStatus.authenticated;
+      final fetchedUser = await _fetchCurrentUser();
+      if (!_apiClient.isLoggedIn) {
+        _user = null;
+        _status = AuthStatus.unauthenticated;
+      } else {
+        if (fetchedUser != null) await _cacheUser(fetchedUser);
+        _user = fetchedUser ?? await _loadCachedUser();
+        _status = AuthStatus.authenticated;
+      }
     } else {
       _status = AuthStatus.unauthenticated;
     }
@@ -116,6 +161,7 @@ class AuthProvider extends ChangeNotifier {
             await _apiClient.setTokens(token, _extractRefreshToken(data));
             final fetchedUser = await _fetchCurrentUser();
             _user = fetchedUser ?? _userFromData(data);
+            if (_user != null) await _cacheUser(_user!);
             _status = AuthStatus.authenticated;
             notifyListeners();
             return true;
@@ -181,6 +227,7 @@ class AuthProvider extends ChangeNotifier {
           }
           final fetchedUser = await _fetchCurrentUser();
           _user = fetchedUser ?? _userFromData(data);
+          if (_user != null) await _cacheUser(_user!);
           _status = AuthStatus.authenticated;
           notifyListeners();
           return true;
@@ -205,9 +252,14 @@ class AuthProvider extends ChangeNotifier {
     _status = AuthStatus.loading;
     notifyListeners();
 
+    final currentUserId = _user?.id;
     await _apiClient.post(ApiConstants.logout, requiresAuth: true);
     await _apiClient.clearTokens();
     await ApiCache.clearAll();
+    await _clearCachedUser();
+    if (currentUserId != null && currentUserId.isNotEmpty) {
+      await AvatarCache.remove(AvatarCache.currentUserKey(currentUserId));
+    }
     _user = null;
     _status = AuthStatus.unauthenticated;
     notifyListeners();
@@ -217,6 +269,7 @@ class AuthProvider extends ChangeNotifier {
     final updatedUser = await _fetchCurrentUser();
     if (updatedUser != null) {
       _user = updatedUser;
+      await _cacheUser(updatedUser);
       notifyListeners();
     }
   }
@@ -256,20 +309,25 @@ class AuthProvider extends ChangeNotifier {
         return false;
       }
 
-      var updatedUser = _userFromData(response.data);
-      updatedUser ??= await _fetchCurrentUser();
+      final updatedUser = await _fetchCurrentUser();
+      final responseData = ApiData.asMap(response.data);
+      final responseAvatar = _stringValue(responseData?['avatar']);
+      final responseCoverImage = _stringValue(
+        responseData?['cover_image'] ?? responseData?['cover_image_web'],
+      );
       _user =
           updatedUser ??
           _user!.copyWith(
             username: username ?? _user!.username,
             email: email ?? _user!.email,
             phone: phone ?? _user!.phone,
-            avatar: avatar ?? _user!.avatar,
-            coverImage: coverImage ?? _user!.coverImage,
+            avatar: responseAvatar ?? avatar ?? _user!.avatar,
+            coverImage: responseCoverImage ?? coverImage ?? _user!.coverImage,
             address: address ?? _user!.address,
             firstname: firstname ?? _user!.firstname,
             lastname: lastname ?? _user!.lastname,
           );
+      await _cacheUser(_user!);
       notifyListeners();
       return true;
     } catch (e) {

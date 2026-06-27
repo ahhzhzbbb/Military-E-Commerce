@@ -357,119 +357,119 @@ class _SearchScreenState extends State<SearchScreen> {
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (_savedSearches.isNotEmpty) ...[
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  'Tìm kiếm gần đây',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textPrimary,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (_savedSearches.isNotEmpty) ...[
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Tìm kiếm gần đây',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textPrimary,
+                    ),
                   ),
-                ),
-                TextButton(
-                  onPressed: _deleteAllSavedSearches,
-                  child: const Text('Xóa tất cả'),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: _savedSearches.map((search) {
-                return GestureDetector(
-                  onTap: () {
-                    _searchController.text = search.keyword;
-                    _performSearch(search.keyword);
-                  },
-                  child: Chip(
-                    label: Text(search.keyword),
-                    deleteIcon: const Icon(Icons.close, size: 16),
-                    onDeleted: () => _deleteSavedSearch(search),
+                  TextButton(
+                    onPressed: _deleteAllSavedSearches,
+                    child: const Text('Xóa tất cả'),
                   ),
-                );
-              }).toList(),
-            ),
-            const SizedBox(height: 24),
-          ] else if (!_isLoadingSaved) ...[
-            Padding(
-              padding: const EdgeInsets.only(bottom: 16),
-              child: Text(
-                'Chưa có tìm kiếm gần đây',
-                style: TextStyle(color: AppColors.textHint, fontSize: 13),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: _savedSearches.map((search) {
+                  return GestureDetector(
+                    onTap: () {
+                      _searchController.text = search.keyword;
+                      _performSearch(search.keyword);
+                    },
+                    child: Chip(
+                      label: Text(search.keyword),
+                      deleteIcon: const Icon(Icons.close, size: 16),
+                      onDeleted: () => _deleteSavedSearch(search),
+                    ),
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 24),
+            ] else if (!_isLoadingSaved) ...[
+              Padding(
+                padding: const EdgeInsets.only(bottom: 16),
+                child: Text(
+                  'Chưa có tìm kiếm gần đây',
+                  style: TextStyle(color: AppColors.textHint, fontSize: 13),
+                ),
+              ),
+            ],
+            const Text(
+              'Danh mục sản phẩm',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: AppColors.textPrimary,
               ),
             ),
+            const SizedBox(height: 12),
+            GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 4,
+                crossAxisSpacing: 8,
+                mainAxisSpacing: 8,
+                childAspectRatio: 0.9,
+              ),
+              itemCount: _categories.length,
+              itemBuilder: (context, index) {
+                final category = _categories[index];
+                final isSelected = _selectedCategoryId == category.id;
+                return GestureDetector(
+                  onTap: () => _selectCategory(isSelected ? null : category.id),
+                  child: Column(
+                    children: [
+                      Container(
+                        width: 56,
+                        height: 56,
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? AppColors.primary
+                              : AppColors.primary.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: CustomNetworkImage(
+                          imageUrl: category.imageUrl,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        category.name,
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: isSelected
+                              ? AppColors.primary
+                              : AppColors.textPrimary,
+                          fontWeight: isSelected
+                              ? FontWeight.bold
+                              : FontWeight.normal,
+                        ),
+                        textAlign: TextAlign.center,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
           ],
-          const Text(
-            'Danh mục sản phẩm',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: AppColors.textPrimary,
-            ),
-          ),
-          const SizedBox(height: 12),
-          GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 4,
-              crossAxisSpacing: 8,
-              mainAxisSpacing: 8,
-              childAspectRatio: 0.9,
-            ),
-            itemCount: _categories.length,
-            itemBuilder: (context, index) {
-              final category = _categories[index];
-              final isSelected = _selectedCategoryId == category.id;
-              return GestureDetector(
-                onTap: () => _selectCategory(isSelected ? null : category.id),
-                child: Column(
-                  children: [
-                    Container(
-                      width: 56,
-                      height: 56,
-                      decoration: BoxDecoration(
-                        color: isSelected
-                            ? AppColors.primary
-                            : AppColors.primary.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: CustomNetworkImage(
-                        imageUrl: category.imageUrl,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      category.name,
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: isSelected
-                            ? AppColors.primary
-                            : AppColors.textPrimary,
-                        fontWeight: isSelected
-                            ? FontWeight.bold
-                            : FontWeight.normal,
-                      ),
-                      textAlign: TextAlign.center,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
-              );
-            },
-          ),
-        ],
+        ),
       ),
-    ),
     );
   }
 

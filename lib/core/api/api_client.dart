@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../constants/api_constants.dart';
+import '../network/network_status_service.dart';
 
 class ApiClient {
   static final ApiClient _instance = ApiClient._internal();
@@ -63,8 +64,10 @@ class ApiClient {
         headers: _headers,
         body: body != null ? jsonEncode(body) : null,
       );
+      NetworkStatusService.instance.markOnline();
       return _handleResponse(response);
     } catch (e) {
+      NetworkStatusService.instance.markOffline();
       return ApiResponse(
         isSuccess: false,
         message: 'Network error: ${e.toString()}',
@@ -84,8 +87,10 @@ class ApiClient {
         uri = uri.replace(queryParameters: queryParams);
       }
       final response = await http.get(uri, headers: _headers);
+      NetworkStatusService.instance.markOnline();
       return _handleResponse(response);
     } catch (e) {
+      NetworkStatusService.instance.markOffline();
       return ApiResponse(
         isSuccess: false,
         message: 'Network error: ${e.toString()}',
@@ -106,8 +111,10 @@ class ApiClient {
         headers: _headers,
         body: body != null ? jsonEncode(body) : null,
       );
+      NetworkStatusService.instance.markOnline();
       return _handleResponse(response);
     } catch (e) {
+      NetworkStatusService.instance.markOffline();
       return ApiResponse(
         isSuccess: false,
         message: 'Network error: ${e.toString()}',
@@ -130,8 +137,10 @@ class ApiClient {
       }
       final streamedResponse = await request.send();
       final response = await http.Response.fromStream(streamedResponse);
+      NetworkStatusService.instance.markOnline();
       return _handleResponse(response);
     } catch (e) {
+      NetworkStatusService.instance.markOffline();
       return ApiResponse(
         isSuccess: false,
         message: 'Network error: ${e.toString()}',
@@ -155,8 +164,10 @@ class ApiClient {
       request.files.add(await http.MultipartFile.fromPath(field, filePath));
       final streamedResponse = await request.send();
       final response = await http.Response.fromStream(streamedResponse);
+      NetworkStatusService.instance.markOnline();
       return _handleResponse(response);
     } catch (e) {
+      NetworkStatusService.instance.markOffline();
       return ApiResponse(
         isSuccess: false,
         message: 'Upload error: ${e.toString()}',
@@ -186,8 +197,10 @@ class ApiClient {
       );
       final streamedResponse = await request.send();
       final response = await http.Response.fromStream(streamedResponse);
+      NetworkStatusService.instance.markOnline();
       return _handleResponse(response);
     } catch (e) {
+      NetworkStatusService.instance.markOffline();
       return ApiResponse(
         isSuccess: false,
         message: 'Upload error: ${e.toString()}',
