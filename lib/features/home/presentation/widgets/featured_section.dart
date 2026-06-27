@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 import '../../../../core/constants/app_theme.dart';
 import '../../../../core/widgets/common_widgets.dart';
 import '../../../../models/models.dart';
+import '../../../social/data/follow_provider.dart';
+import '../../../social/utils/blocked_seller_filter.dart';
 import '../../data/product_provider.dart';
 import '../../../product/presentation/product_detail_screen.dart';
 
@@ -50,21 +52,25 @@ class FeaturedSection extends StatelessWidget {
         const SizedBox(height: 12),
         SizedBox(
           height: 240,
-          child: Consumer<ProductProvider>(
-            builder: (context, provider, child) {
+          child: Consumer2<ProductProvider, FollowProvider>(
+            builder: (context, provider, followProvider, child) {
+              final featuredProducts = visibleProductsForBlockedSellers(
+                provider.products,
+                followProvider.blocked,
+              ).take(5).toList();
               if (provider.isLoading) {
                 return _buildShimmerList();
               }
-              if (provider.featuredProducts.isEmpty) {
+              if (featuredProducts.isEmpty) {
                 return const SizedBox.shrink();
               }
               return ListView.builder(
                 scrollDirection: Axis.horizontal,
                 padding: const EdgeInsets.symmetric(horizontal: 12),
-                itemCount: provider.featuredProducts.length,
+                itemCount: featuredProducts.length,
                 itemBuilder: (context, index) {
                   return _FeaturedProductCard(
-                    product: provider.featuredProducts[index],
+                    product: featuredProducts[index],
                   );
                 },
               );

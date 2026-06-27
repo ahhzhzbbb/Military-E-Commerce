@@ -1,6 +1,11 @@
+import 'dart:typed_data';
+
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_theme.dart';
+import '../../../core/widgets/common_widgets.dart';
+import '../../../models/user.dart';
 import '../../auth/data/auth_provider.dart';
 
 class ProfileEditScreen extends StatefulWidget {
@@ -16,15 +21,46 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
   late TextEditingController _emailController;
   late TextEditingController _phoneController;
   late TextEditingController _addressController;
+  Uint8List? _avatarBytes;
+  String? _avatarFilename;
+  bool _isSaving = false;
+  bool _didPopulateInitialValues = false;
 
   @override
   void initState() {
     super.initState();
-    final user = context.read<AuthProvider>().user;
-    _usernameController = TextEditingController(text: user?.username);
-    _emailController = TextEditingController(text: user?.email);
-    _phoneController = TextEditingController(text: user?.phone);
-    _addressController = TextEditingController(text: user?.address);
+    _usernameController = TextEditingController();
+    _emailController = TextEditingController();
+    _phoneController = TextEditingController();
+    _addressController = TextEditingController();
+    _populateInitialValues(context.read<AuthProvider>().user);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) context.read<AuthProvider>().refreshProfile();
+    });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _populateInitialValues(context.watch<AuthProvider>().user);
+  }
+
+  void _populateInitialValues(User? user) {
+    if (user == null) return;
+
+    if (!_didPopulateInitialValues) {
+      _usernameController.text = user.displayName;
+      _didPopulateInitialValues = true;
+    }
+    if (_emailController.text.isEmpty && user.email?.isNotEmpty == true) {
+      _emailController.text = user.email!;
+    }
+    if (_phoneController.text.isEmpty && user.phone?.isNotEmpty == true) {
+      _phoneController.text = user.phone!;
+    }
+    if (_addressController.text.isEmpty && user.address?.isNotEmpty == true) {
+      _addressController.text = user.address!;
+    }
   }
 
   @override
@@ -36,15 +72,83 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
     super.dispose();
   }
 
+  Future<void> _pickAvatar() async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.image,
+      allowMultiple: false,
+      withData: true,
+    );
+    if (!mounted || result == null || result.files.isEmpty) return;
+
+    final file = result.files.single;
+    if (file.bytes == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Không thể đọc ảnh'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      _avatarBytes = file.bytes;
+      _avatarFilename = file.name;
+    });
+  }
+
+  ({String firstname, String lastname}) _splitName(String value) {
+    final parts = value.trim().split(RegExp(r'\s+'));
+    if (parts.isEmpty || parts.first.isEmpty) {
+      return (firstname: '', lastname: '');
+    }
+    return (
+      firstname: parts.first,
+      lastname: parts.length > 1 ? parts.sublist(1).join(' ') : '',
+    );
+  }
+
   Future<void> _handleSave() async {
-    if (_formKey.currentState?.validate() ?? false) {
+    if ((_formKey.currentState?.validate() ?? false) && !_isSaving) {
+      setState(() => _isSaving = true);
       final authProvider = context.read<AuthProvider>();
+      String? avatarUrl;
+      if (_avatarBytes != null && _avatarFilename != null) {
+        avatarUrl = await authProvider.uploadAvatar(
+          bytes: _avatarBytes!,
+          filename: _avatarFilename!,
+        );
+        if (avatarUrl == null) {
+          if (mounted) {
+            setState(() => _isSaving = false);
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  authProvider.errorMessage ?? 'Tải ảnh lên thất bại',
+                ),
+                backgroundColor: AppColors.error,
+              ),
+            );
+          }
+          return;
+        }
+      }
+
+      final name = _usernameController.text.trim();
+      final splitName = _splitName(name);
       final success = await authProvider.updateProfile(
-        username: _usernameController.text.trim(),
+        username: name,
         email: _emailController.text.trim(),
         phone: _phoneController.text.trim(),
+        avatar: avatarUrl,
         address: _addressController.text.trim(),
+        firstname: splitName.firstname,
+        lastname: splitName.lastname,
       );
+
+      if (mounted) {
+        setState(() => _isSaving = false);
+      }
 
       if (success && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -54,6 +158,15 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
           ),
         );
         Navigator.of(context).pop();
+      } else if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              authProvider.errorMessage ?? 'Cập nhật thông tin thất bại',
+            ),
+            backgroundColor: AppColors.error,
+          ),
+        );
       }
     }
   }
@@ -72,6 +185,8 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
           key: _formKey,
           child: Column(
             children: [
+              _buildAvatarPicker(),
+              const SizedBox(height: 24),
               TextFormField(
                 controller: _usernameController,
                 decoration: const InputDecoration(
@@ -126,7 +241,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: _handleSave,
+                  onPressed: _isSaving ? null : _handleSave,
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     backgroundColor: AppColors.primary,
@@ -158,6 +273,55 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildAvatarPicker() {
+    final user = context.watch<AuthProvider>().user;
+
+    return Column(
+      children: [
+        Stack(
+          children: [
+            CircleAvatar(
+              radius: 52,
+              backgroundColor: AppColors.divider.withValues(alpha: 0.4),
+              child: ClipOval(
+                child: _avatarBytes != null
+                    ? Image.memory(
+                        _avatarBytes!,
+                        width: 104,
+                        height: 104,
+                        fit: BoxFit.cover,
+                      )
+                    : CustomNetworkImage(
+                        imageUrl: user?.avatar,
+                        width: 104,
+                        height: 104,
+                      ),
+              ),
+            ),
+            Positioned(
+              bottom: 0,
+              right: 0,
+              child: IconButton.filled(
+                onPressed: _isSaving ? null : _pickAvatar,
+                icon: const Icon(Icons.camera_alt, size: 20),
+                style: IconButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        TextButton.icon(
+          onPressed: _isSaving ? null : _pickAvatar,
+          icon: const Icon(Icons.image_outlined),
+          label: const Text('Đổi ảnh đại diện'),
+        ),
+      ],
     );
   }
 }

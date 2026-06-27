@@ -7,7 +7,9 @@ import 'package:shimmer/shimmer.dart';
 import '../data/follow_provider.dart';
 
 class FollowingScreen extends StatefulWidget {
-  const FollowingScreen({super.key});
+  final int initialTab;
+
+  const FollowingScreen({super.key, this.initialTab = 0});
 
   @override
   State<FollowingScreen> createState() => _FollowingScreenState();
@@ -19,7 +21,11 @@ class _FollowingScreenState extends State<FollowingScreen> with SingleTickerProv
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(
+      length: 3,
+      vsync: this,
+      initialIndex: widget.initialTab.clamp(0, 2).toInt(),
+    );
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final provider = context.read<FollowProvider>();
       provider.loadFollowing();
@@ -153,7 +159,7 @@ class _FollowingScreenState extends State<FollowingScreen> with SingleTickerProv
             : const Icon(Icons.person, color: AppColors.primary),
       ),
       title: Text(
-        user.username ?? 'Người dùng',
+        user.displayName,
         style: const TextStyle(fontWeight: FontWeight.w600),
       ),
       subtitle: user.address != null
@@ -165,10 +171,28 @@ class _FollowingScreenState extends State<FollowingScreen> with SingleTickerProv
             )
           : null,
       trailing: isBlockList
-          ? TextButton(
-              onPressed: () => provider.toggleBlock(user.id),
-              style: TextButton.styleFrom(foregroundColor: AppColors.error),
-              child: const Text('Bỏ chặn'),
+          ? OutlinedButton.icon(
+              onPressed: () async {
+                final success = await provider.unblockUser(user.id);
+                if (!mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      success ? 'Đã bỏ chặn người bán' : 'Bỏ chặn thất bại',
+                    ),
+                    backgroundColor:
+                        success ? AppColors.success : AppColors.error,
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              },
+              icon: const Icon(Icons.lock_open, size: 18),
+              label: const Text('Bỏ chặn'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.primary,
+                side: const BorderSide(color: AppColors.primary),
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+              ),
             )
           : showFollowButton
               ? OutlinedButton(

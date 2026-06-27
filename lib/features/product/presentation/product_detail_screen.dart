@@ -9,6 +9,7 @@ import '../../../models/models.dart';
 import '../../cart/data/cart_provider.dart';
 import '../../cart/presentation/cart_screen.dart';
 import '../../social/data/follow_provider.dart';
+import '../../social/presentation/following_screen.dart';
 import '../../social/presentation/user_profile_screen.dart';
 import 'controllers/product_detail_controller.dart';
 
@@ -711,15 +712,32 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     }
 
     if (_controller.product == null) {
+      final isAccessDenied = _controller.isAccessDenied;
       return Scaffold(
         backgroundColor: AppColors.background,
         appBar: AppBar(title: const Text('Chi tiết sản phẩm')),
         body: EmptyState(
-          icon: Icons.error_outline,
-          title: 'Không tìm thấy sản phẩm',
-          message: _controller.error ?? 'Sản phẩm này có thể đã bị xóa hoặc không tồn tại.',
-          buttonText: 'Thử lại',
-          onButtonPressed: _loadProduct,
+          icon: isAccessDenied ? Icons.block : Icons.error_outline,
+          title: isAccessDenied
+              ? 'Không thể xem sản phẩm này'
+              : 'Không tìm thấy sản phẩm',
+          message: isAccessDenied
+              ? 'Bạn hoặc người bán đang chặn nhau. Hãy bỏ chặn trong danh sách đã chặn nếu bạn muốn xem lại sản phẩm.'
+              : _controller.error ??
+                  'Sản phẩm này có thể đã bị xóa hoặc không tồn tại.',
+          buttonText: isAccessDenied ? 'Mở danh sách đã chặn' : 'Thử lại',
+          onButtonPressed: isAccessDenied
+              ? () async {
+                  await Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const FollowingScreen(initialTab: 2),
+                    ),
+                  );
+                  if (mounted) {
+                    _loadProduct();
+                  }
+                }
+              : _loadProduct,
         ),
       );
     }

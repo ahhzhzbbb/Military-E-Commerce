@@ -117,6 +117,11 @@ class User {
 
   String get displayName {
     if (fullname != null && fullname!.isNotEmpty) return fullname!;
+    final firstLastName = [
+      firstname,
+      lastname,
+    ].where((part) => part != null && part.isNotEmpty).join(' ');
+    if (firstLastName.isNotEmpty) return firstLastName;
     if (username != null && username!.isNotEmpty) return username!;
     return 'Người dùng';
   }

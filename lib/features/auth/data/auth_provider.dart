@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:military_e_commerce/core/api/api_client.dart';
 import 'package:military_e_commerce/core/api/api_data.dart';
@@ -58,7 +60,24 @@ class AuthProvider extends ChangeNotifier {
     }
 
     if (!response.isSuccess) return null;
-    return _userFromData(response.data);
+    final publicUser = _userFromData(response.data);
+    final userId = publicUser?.id;
+    if (userId == null || userId.isEmpty) return publicUser;
+
+    final privateResponse = await _apiClient.post(
+      ApiConstants.getUserInfo,
+      body: {'user_id': int.tryParse(userId) ?? userId},
+      requiresAuth: true,
+    );
+
+    if (privateResponse.isTokenExpired) {
+      await _apiClient.clearTokens();
+      _status = AuthStatus.unauthenticated;
+      return null;
+    }
+
+    if (!privateResponse.isSuccess) return publicUser;
+    return _userFromData(privateResponse.data) ?? publicUser;
   }
 
   Future<void> checkAuthStatus() async {
@@ -209,6 +228,8 @@ class AuthProvider extends ChangeNotifier {
     String? avatar,
     String? coverImage,
     String? address,
+    String? firstname,
+    String? lastname,
   }) async {
     if (_user == null) return false;
 
@@ -220,6 +241,8 @@ class AuthProvider extends ChangeNotifier {
         'avatar': ?avatar,
         'cover_image': ?coverImage,
         'address': ?address,
+        'firstname': ?firstname,
+        'lastname': ?lastname,
       };
       final response = await _apiClient.post(
         ApiConstants.setUserInfo,
@@ -244,6 +267,8 @@ class AuthProvider extends ChangeNotifier {
             avatar: avatar ?? _user!.avatar,
             coverImage: coverImage ?? _user!.coverImage,
             address: address ?? _user!.address,
+            firstname: firstname ?? _user!.firstname,
+            lastname: lastname ?? _user!.lastname,
           );
       notifyListeners();
       return true;
@@ -252,6 +277,36 @@ class AuthProvider extends ChangeNotifier {
       notifyListeners();
       return false;
     }
+  }
+
+  Future<String?> uploadAvatar({
+    required Uint8List bytes,
+    required String filename,
+  }) async {
+    _errorMessage = null;
+    notifyListeners();
+
+    final response = await _apiClient.uploadFileBytes(
+      ApiConstants.uploadFile,
+      bytes: bytes,
+      filename: filename,
+    );
+
+    if (!response.isSuccess) {
+      _errorMessage = '${response.message} (Code: ${response.code})';
+      notifyListeners();
+      return null;
+    }
+
+    final data = ApiData.asMap(response.data);
+    final url = data?['url']?.toString();
+    if (url == null || url.isEmpty) {
+      _errorMessage = 'Upload did not return an avatar URL';
+      notifyListeners();
+      return null;
+    }
+
+    return url;
   }
 
   Future<bool> changePassword({

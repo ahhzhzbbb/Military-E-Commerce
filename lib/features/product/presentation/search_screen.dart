@@ -6,7 +6,10 @@ import 'package:military_e_commerce/core/cache/catalog_cache.dart';
 import 'package:military_e_commerce/core/constants/api_constants.dart';
 import 'package:military_e_commerce/core/constants/app_theme.dart';
 import 'package:military_e_commerce/core/widgets/common_widgets.dart';
+import 'package:military_e_commerce/features/social/data/follow_provider.dart';
+import 'package:military_e_commerce/features/social/utils/blocked_seller_filter.dart';
 import 'package:military_e_commerce/models/models.dart';
+import 'package:provider/provider.dart';
 import 'product_detail_screen.dart';
 
 class SearchScreen extends StatefulWidget {
@@ -34,6 +37,9 @@ class _SearchScreenState extends State<SearchScreen> {
     super.initState();
     _loadCategories();
     _loadSavedSearches();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<FollowProvider>().loadBlocked();
+    });
   }
 
   @override
@@ -160,6 +166,13 @@ class _SearchScreenState extends State<SearchScreen> {
         .whereType<Map>()
         .map((item) => Product.fromJson(Map<String, dynamic>.from(item)))
         .toList();
+  }
+
+  List<Product> _visibleSearchResults(BuildContext context) {
+    return visibleProductsForBlockedSellers(
+      _searchResults,
+      context.watch<FollowProvider>().blocked,
+    );
   }
 
   Future<void> _runSearch({String? query}) async {
@@ -300,12 +313,14 @@ class _SearchScreenState extends State<SearchScreen> {
   }
 
   Widget _buildBody() {
+    final visibleResults = _visibleSearchResults(context);
+
     if (_isSearching) {
       return const ShimmerProductGrid();
     }
 
-    if (_searchResults.isNotEmpty) {
-      return _buildSearchResults();
+    if (visibleResults.isNotEmpty) {
+      return _buildSearchResults(visibleResults);
     }
 
     if (_error != null) {
@@ -458,6 +473,15 @@ class _SearchScreenState extends State<SearchScreen> {
     );
   }
 
+  Widget _buildSearchResults(List<Product> visibleResults) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(16),
+          child: Text(
+            'Tìm thấy ${visibleResults.length} sản phẩm',
+            style: const TextStyle(color: AppColors.textSecondary),
   Widget _buildSearchResults() {
     return RefreshIndicator(
       onRefresh: () => _runSearch(),
@@ -486,6 +510,10 @@ class _SearchScreenState extends State<SearchScreen> {
                 return _buildProductItem(_searchResults[index]);
               },
             ),
+            itemCount: visibleResults.length,
+            itemBuilder: (context, index) {
+              return _buildProductItem(visibleResults[index]);
+            },
           ),
         ],
       ),

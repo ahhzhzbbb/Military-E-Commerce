@@ -14,6 +14,7 @@ class ProductDetailController {
   bool isLoading = true;
   String? error;
   bool isLiked = false;
+  bool isAccessDenied = false;
   double averageRating = 0;
 
   dynamic productIdParam(String productId) {
@@ -77,6 +78,7 @@ class ProductDetailController {
     final cachedComments = await ApiCache.read(commentsCacheKey);
     final cachedRatings = await ApiCache.read(ratingsCacheKey);
     final hasProductCache = cachedProduct != null;
+    isAccessDenied = false;
 
     if (hasProductCache) {
       product = parseProduct(cachedProduct);
@@ -104,6 +106,9 @@ class ProductDetailController {
       );
 
       if (!productResponse.isSuccess) {
+        if (productResponse.code == ResponseCodes.notAccess) {
+          isAccessDenied = true;
+        }
         throw Exception(
           '${productResponse.message} (Code: ${productResponse.code})',
         );
@@ -153,7 +158,14 @@ class ProductDetailController {
       isLiked = product?.isLiked ?? false;
       _updateAverageRating();
     } catch (e) {
-      if (!hasProductCache) {
+      if (isAccessDenied) {
+        await CatalogCache.clearProduct(productId);
+        product = null;
+        comments = [];
+        ratings = [];
+        averageRating = 0;
+        error = e.toString();
+      } else if (!hasProductCache) {
         product = null;
         comments = [];
         ratings = [];

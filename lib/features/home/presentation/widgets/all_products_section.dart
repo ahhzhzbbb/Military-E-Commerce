@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 import '../../../../core/constants/app_theme.dart';
 import '../../../../core/widgets/common_widgets.dart';
 import '../../../../models/models.dart';
+import '../../../social/data/follow_provider.dart';
+import '../../../social/utils/blocked_seller_filter.dart';
 import '../../data/product_provider.dart';
 import '../../../product/presentation/product_detail_screen.dart';
 
@@ -55,12 +57,16 @@ class AllProductsSection extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 12),
-        Consumer<ProductProvider>(
-          builder: (context, provider, child) {
+        Consumer2<ProductProvider, FollowProvider>(
+          builder: (context, provider, followProvider, child) {
+            final products = visibleProductsForBlockedSellers(
+              provider.products,
+              followProvider.blocked,
+            );
             if (provider.isLoading) {
               return const ShimmerProductGrid();
             }
-            if (provider.products.isEmpty) {
+            if (products.isEmpty) {
               return const SizedBox(
                 height: 200,
                 child: Center(
@@ -81,9 +87,9 @@ class AllProductsSection extends StatelessWidget {
                 mainAxisSpacing: 12,
                 childAspectRatio: 0.58,
               ),
-              itemCount: provider.products.length,
+              itemCount: products.length,
               itemBuilder: (context, index) {
-                return _ProductCard(product: provider.products[index]);
+                return _ProductCard(product: products[index]);
               },
             );
           },
