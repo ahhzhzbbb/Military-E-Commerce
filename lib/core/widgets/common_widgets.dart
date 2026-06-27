@@ -15,6 +15,7 @@ class CustomNetworkImage extends StatefulWidget {
   final BoxFit fit;
   final BorderRadius? borderRadius;
   final String? persistentCacheKey;
+  final Widget? fallback;
 
   const CustomNetworkImage({
     super.key,
@@ -24,6 +25,7 @@ class CustomNetworkImage extends StatefulWidget {
     this.fit = BoxFit.cover,
     this.borderRadius,
     this.persistentCacheKey,
+    this.fallback,
   });
 
   @override
@@ -140,6 +142,14 @@ class _CustomNetworkImageState extends State<CustomNetworkImage> {
   }
 
   Widget _buildPlaceholder() {
+    if (widget.fallback != null) {
+      return SizedBox(
+        width: widget.width,
+        height: widget.height,
+        child: Center(child: widget.fallback),
+      );
+    }
+
     return Container(
       width: widget.width,
       height: widget.height,

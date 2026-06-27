@@ -315,6 +315,15 @@ class _SearchScreenState extends State<SearchScreen> {
   Widget _buildBody() {
     final visibleResults = _visibleSearchResults(context);
 
+    return Column(
+      children: [
+        _buildCategoryStrip(),
+        Expanded(child: _buildSearchContent(visibleResults)),
+      ],
+    );
+  }
+
+  Widget _buildSearchContent(List<Product> visibleResults) {
     if (_isSearching) {
       return const ShimmerProductGrid();
     }
@@ -344,6 +353,79 @@ class _SearchScreenState extends State<SearchScreen> {
     }
 
     return const SizedBox.shrink();
+  }
+
+  Widget _buildCategoryStrip() {
+    if (_categories.isEmpty) return const SizedBox.shrink();
+
+    return Container(
+      height: 76,
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(bottom: BorderSide(color: AppColors.divider)),
+      ),
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        itemCount: _categories.length,
+        separatorBuilder: (_, _) => const SizedBox(width: 8),
+        itemBuilder: (context, index) {
+          final category = _categories[index];
+          final isSelected = _selectedCategoryId == category.id;
+          final icon = Icon(
+            Icons.category_outlined,
+            color: isSelected ? Colors.white : AppColors.primary,
+            size: 18,
+          );
+
+          return InkWell(
+            borderRadius: BorderRadius.circular(10),
+            onTap: () => _selectCategory(isSelected ? null : category.id),
+            child: SizedBox(
+              width: 64,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 34,
+                    height: 34,
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? AppColors.primary
+                          : AppColors.primary.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: category.imageUrl != null &&
+                            category.imageUrl!.isNotEmpty
+                        ? CustomNetworkImage(
+                            imageUrl: category.imageUrl,
+                            borderRadius: BorderRadius.circular(10),
+                            fallback: icon,
+                          )
+                        : icon,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    category.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight:
+                          isSelected ? FontWeight.w700 : FontWeight.w400,
+                      color: isSelected
+                          ? AppColors.primary
+                          : AppColors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
   }
 
   Widget _buildInitialContent() {
@@ -406,67 +488,6 @@ class _SearchScreenState extends State<SearchScreen> {
                 ),
               ),
             ],
-            const Text(
-              'Danh mục sản phẩm',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: AppColors.textPrimary,
-              ),
-            ),
-            const SizedBox(height: 12),
-            GridView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 4,
-                crossAxisSpacing: 8,
-                mainAxisSpacing: 8,
-                childAspectRatio: 0.9,
-              ),
-              itemCount: _categories.length,
-              itemBuilder: (context, index) {
-                final category = _categories[index];
-                final isSelected = _selectedCategoryId == category.id;
-                return GestureDetector(
-                  onTap: () => _selectCategory(isSelected ? null : category.id),
-                  child: Column(
-                    children: [
-                      Container(
-                        width: 56,
-                        height: 56,
-                        decoration: BoxDecoration(
-                          color: isSelected
-                              ? AppColors.primary
-                              : AppColors.primary.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: CustomNetworkImage(
-                          imageUrl: category.imageUrl,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        category.name,
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: isSelected
-                              ? AppColors.primary
-                              : AppColors.textPrimary,
-                          fontWeight: isSelected
-                              ? FontWeight.bold
-                              : FontWeight.normal,
-                        ),
-                        textAlign: TextAlign.center,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ),
-                );
-              },
-            ),
           ],
         ),
       ),
