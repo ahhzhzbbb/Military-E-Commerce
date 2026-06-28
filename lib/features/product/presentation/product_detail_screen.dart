@@ -103,13 +103,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     );
   }
 
-  void _buyNow() {
-    _addToCart();
-    Future.delayed(const Duration(milliseconds: 500), () {
-      if (mounted) Navigator.of(context).pop();
-    });
-  }
-
   Future<void> _submitComment(String content) async {
     final productId = int.tryParse(widget.productId.toString()) ?? widget.productId;
 
@@ -1431,21 +1424,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     backgroundColor: AppColors.primary,
                     foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                    elevation: 0,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 6),
-              Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: _buyNow,
-                  icon: const Icon(Icons.flash_on, size: 18),
-                  label: const Text('Mua ngay'),
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    backgroundColor: AppColors.accent,
-                    foregroundColor: AppColors.textPrimary,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                     elevation: 0,
                   ),
