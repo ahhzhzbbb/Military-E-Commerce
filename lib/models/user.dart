@@ -105,8 +105,8 @@ class User {
           _stringValue(json['lastname']) ?? _stringValue(json['last_name']),
       followed: _toBool(json['followed']),
       isBlocked: _toBool(json['is_blocked']),
-      followerCount: _toInt(json['follower_count']),
-      followingCount: _toInt(json['following_count']),
+      followerCount: _toInt(json['follower_count'] ?? json['followers']),
+      followingCount: _toInt(json['following_count'] ?? json['following']),
       listingCount: _toInt(json['listing_count'] ?? json['listing']),
       balance:
           _toDouble(json['balance']) ??

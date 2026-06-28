@@ -13,6 +13,7 @@ import 'package:military_e_commerce/features/social/presentation/following_scree
 import 'package:military_e_commerce/features/notifications/presentation/notification_screen.dart';
 import 'package:military_e_commerce/features/news/presentation/news_screen.dart';
 import 'profile_edit_screen.dart';
+import 'liked_products_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -449,7 +450,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
             icon: Icons.favorite_border,
             title: 'Sản phẩm đã thích',
             subtitle: 'Danh sách sản phẩm yêu thích',
-            onTap: () {},
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => const LikedProductsScreen(),
+                ),
+              );
+            },
           ),
           const Divider(height: 1),
           _buildMenuItem(

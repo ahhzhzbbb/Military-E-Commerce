@@ -75,4 +75,11 @@ export class GetListProductsDto {
   @IsInt()
   @Min(1)
   count: number;
+
+  @ApiPropertyOptional({
+    description: '1: only liked products, requires auth',
+  })
+  @IsOptional()
+  @IsInt()
+  is_liked?: number;
 }

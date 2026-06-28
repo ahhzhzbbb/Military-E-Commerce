@@ -395,3 +395,4 @@ export class ProductsController {
     return this.productsService.get_listing(req.user?.id, query);
   }
 }
+}

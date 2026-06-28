@@ -645,6 +645,7 @@ export class ProductsService implements OnModuleInit {
       last_id,
       index = 0,
       count = 10,
+      is_liked,
     } = query;
 
     const qb = this.productRepo
@@ -688,6 +689,23 @@ export class ProductsService implements OnModuleInit {
 
     if (last_id !== undefined) {
       qb.andWhere('product.id < :last_id', { last_id });
+    }
+
+    if (is_liked === 1) {
+      if (!authUserId) {
+        qb.andWhere('1 = 0');
+      } else {
+        const likedRows = await this.likeRepo.find({
+          where: { user_id: authUserId },
+          select: ['product_id'],
+        });
+        const likedIds = likedRows.map((l) => l.product_id);
+        if (likedIds.length === 0) {
+          qb.andWhere('1 = 0');
+        } else {
+          qb.andWhere('product.id IN (:...likedIds)', { likedIds });
+        }
+      }
     }
 
     switch (order) {
